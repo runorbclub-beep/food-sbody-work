@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>冰箱管家 - Fridge Manager</title>
+<title>食品管家 - Fridge Manager</title>
 <meta name="description" content="家庭冰箱物品管理系统 - 拍照记录、语音输入、库存管理、过期提醒">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -58,16 +58,19 @@ a { color: var(--primary); text-decoration: none; }
   justify-content: center;
   align-items: center;
   padding: 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .login-overlay.show { display: flex; }
 .login-box {
   background: var(--card);
   border-radius: 20px;
-  padding: 32px 28px;
+  padding: 32px 28px 48px;
   width: 100%;
   max-width: 360px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.12);
   text-align: center;
+  margin: auto 0;
 }
 .login-box .logo { font-size: 56px; margin-bottom: 8px; }
 .login-box h2 { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
@@ -657,7 +660,7 @@ a { color: var(--primary); text-decoration: none; }
 <div class="login-overlay show" id="login-screen">
   <div class="login-box">
     <div class="logo">🧊</div>
-    <h2>冰箱管家</h2>
+    <h2>食品管家</h2>
     <p class="subtitle">家庭冰箱物品管理系统</p>
 
     <div class="login-tabs">
@@ -722,7 +725,7 @@ a { color: var(--primary); text-decoration: none; }
 
 <!-- ===== HEADER ===== -->
 <header class="app-header">
-  <h1><span>🧊</span> 冰箱管家</h1>
+  <h1><span>🧊</span> 食品管家</h1>
   <div class="header-actions">
     <button class="header-btn" onclick="showPage('family')" title="家庭成员">👨‍👩‍👧‍👦</button>
     <button class="header-btn-wrap">
@@ -1271,7 +1274,7 @@ function enterApp() {
   document.getElementById('login-screen').style.display = 'none';
   // Show current user in header
   const header = document.querySelector('.app-header h1');
-  header.innerHTML = `<span>🧊</span> 冰箱管家 <span style="font-size:13px;font-weight:400;color:var(--text-secondary);margin-left:4px">${currentUser.avatar} ${currentUser.name}</span>`;
+  header.innerHTML = `<span>🧊</span> 食品管家 <span style="font-size:13px;font-weight:400;color:var(--text-secondary);margin-left:4px">${currentUser.avatar} ${currentUser.name}</span>`;
 
   initApp();
   loadSettings();
