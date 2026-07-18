@@ -864,9 +864,10 @@ a { color: var(--primary); text-decoration: none; }
 <div id="page-family" class="page">
   <div class="card">
     <div class="card-title">👨‍👩‍👧‍👧 家庭成员</div>
-    <div id="invite-section" class="card" style="background:var(--primary-bg);padding:12px;text-align:center;margin-bottom:10px">
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">📨 邀请码（分享给家人注册时填写）</div>
-      <div id="invite-code-display" style="font-size:24px;font-weight:700;color:var(--primary);letter-spacing:6px;font-family:monospace">------</div>
+    <div id="invite-section" class="card" style="background:var(--primary-bg);padding:14px;text-align:center;margin-bottom:10px">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">家人邀请码</div>
+      <div id="invite-code-display" style="font-size:28px;font-weight:700;color:var(--primary);letter-spacing:8px;font-family:monospace">------</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">分享此邀请码给家人，注册时填写即可加入家庭</div>
     </div>
     <ul class="member-list" id="member-list"></ul>
     <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);text-align:center;padding:4px">
@@ -1610,50 +1611,81 @@ function startVoice() {
     return;
   }
 
-  if (!recognition) {
-    recognition = new SpeechRecognition();
-    recognition.lang = 'zh-CN';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.onresult = (e) => {
-      let text = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        text += e.results[i][0].transcript;
-      }
-      voiceText = text;
-      document.getElementById('voice-result').textContent = text || '正在听...';
-    };
-    recognition.onend = () => {
-      isRecording = false;
-      document.getElementById('btn-voice').classList.remove('recording');
-      document.getElementById('btn-voice').textContent = '🎤';
-      if (voiceText) toast('语音识别完成');
-    };
-    recognition.onerror = (e) => {
-      console.error('Voice error:', e.error);
-      isRecording = false;
-      document.getElementById('btn-voice').classList.remove('recording');
-      document.getElementById('btn-voice').textContent = '🎤';
-      if (e.error === 'not-allowed') toast('请允许使用麦克风');
-      else if (e.error === 'no-speech') toast('未检测到语音');
-    };
+  // Create fresh instance each time for reliability
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
   }
+  
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 3;
+
+  let finalText = '';
+
+  recognition.onresult = (e) => {
+    let text = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const result = e.results[i];
+      if (result.isFinal) {
+        finalText += result[0].transcript;
+      }
+      text += result[0].transcript;
+    }
+    voiceText = finalText || text;
+    document.getElementById('voice-result').textContent = voiceText || '正在听...';
+  };
+
+  recognition.onend = () => {
+    // Auto-restart if still recording
+    if (isRecording) {
+      try {
+        recognition.start();
+        return;
+      } catch(e) {}
+    }
+    isRecording = false;
+    document.getElementById('btn-voice').classList.remove('recording');
+    document.getElementById('btn-voice').textContent = '🎤';
+    document.getElementById('btn-voice').style.background = 'var(--accent)';
+    if (voiceText && voiceText.trim()) {
+      document.getElementById('voice-result').innerHTML = '✅ 已识别: <strong>' + voiceText + '</strong>';
+      toast('✅ 语音识别完成，点击保存按钮');
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.error('Voice error:', e.error);
+    if (e.error === 'aborted') return;
+    isRecording = false;
+    document.getElementById('btn-voice').classList.remove('recording');
+    document.getElementById('btn-voice').textContent = '🎤';
+    document.getElementById('btn-voice').style.background = 'var(--accent)';
+    if (e.error === 'not-allowed') toast('请允许使用麦克风');
+    else if (e.error === 'no-speech') toast('未检测到语音，请重试');
+    else toast('语音识别错误，请重试');
+  };
 
   isRecording = true;
   voiceText = '';
-  document.getElementById('voice-result').textContent = '正在听...🎙️';
-  document.getElementById('btn-voice').classList.add('recording');
+  document.getElementById('voice-result').textContent = '🎙️ 正在听，请说话...（说完后点击⏹️停止）';
   document.getElementById('btn-voice').textContent = '⏹️';
+  document.getElementById('btn-voice').style.background = 'var(--danger)';
   recognition.start();
 }
 
 function stopVoice() {
-  if (recognition) {
-    recognition.stop();
-  }
   isRecording = false;
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
   document.getElementById('btn-voice').classList.remove('recording');
   document.getElementById('btn-voice').textContent = '🎤';
+  document.getElementById('btn-voice').style.background = 'var(--accent)';
+  if (voiceText && voiceText.trim()) {
+    document.getElementById('voice-result').innerHTML = '✅ 已识别: <strong>' + voiceText + '</strong>';
+  }
 }
 
 // ============================================================
