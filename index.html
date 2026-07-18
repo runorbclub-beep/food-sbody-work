@@ -794,46 +794,56 @@ a { color: var(--primary); text-decoration: none; }
 
   <!-- Item Form -->
   <div class="card" style="margin-bottom:0">
-    <div class="form-group">
-      <label class="form-label">物品名称 <span style="font-weight:400;color:var(--text-muted);font-size:12px">选择或直接输入</span></label>
-      <div style="display:flex;gap:6px;flex-direction:column">
-        <input class="form-input" id="input-custom-name" placeholder="直接输入物品名称（如：进口牛排、自制酱料）" oninput="onNameInput()" style="font-size:16px">
-        <select class="form-select" id="input-product" onchange="onProductSelect()" style="font-size:13px;color:var(--text-muted)">
-          <option value="">— 或从常用列表选择 —</option>
-        </select>
+    <!-- Voice input first (primary) -->
+    <div class="card" style="background:var(--primary-bg);padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <button class="voice-btn" id="btn-voice" onclick="toggleVoice()" style="width:52px;height:52px;font-size:24px">🎤</button>
+        <div style="flex:1;font-size:14px;color:var(--text-secondary)">
+          <strong>点击麦克风说话</strong> — 说出物品名称、数量和位置<br>
+          <span style="font-size:12px">例如：「三盒牛奶放冰箱1号门，后天过期」</span>
+        </div>
+      </div>
+      <div class="voice-result" id="voice-result" style="padding:10px 14px;background:white;border-radius:var(--radius-sm);min-height:40px;font-size:14px;color:var(--text-secondary)">
+        点击🎤后开始说话...
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">数量</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="form-input" id="input-qty" type="number" min="0.1" step="0.1" value="1" style="flex:1;text-align:center;font-size:18px;font-weight:700">
-        <span style="font-size:14px;color:var(--text-secondary)" id="input-unit-display">个</span>
-        <button class="btn btn-sm btn-secondary" style="width:auto;padding:6px" onclick="changeQty(-1)">−</button>
-        <button class="btn btn-sm btn-secondary" style="width:auto;padding:6px" onclick="changeQty(1)">+</button>
+
+    <!-- Manual input (fallback) -->
+    <details style="margin-bottom:12px">
+      <summary style="font-size:13px;color:var(--primary);cursor:pointer;padding:4px 0">✏️ 手动输入详细信息</summary>
+      <div style="margin-top:10px">
+        <div class="form-group">
+          <label class="form-label">物品名称</label>
+          <div style="display:flex;gap:6px;flex-direction:column">
+            <input class="form-input" id="input-custom-name" placeholder="直接输入物品名称" oninput="onNameInput()" style="font-size:16px">
+            <select class="form-select" id="input-product" onchange="onProductSelect()" style="font-size:13px;color:var(--text-muted)">
+              <option value="">— 或从常用列表选择 —</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">数量</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="form-input" id="input-qty" type="number" min="0.1" step="0.1" value="1" style="flex:1;text-align:center;font-size:18px;font-weight:700">
+            <span style="font-size:14px;color:var(--text-secondary)" id="input-unit-display">个</span>
+            <button class="btn btn-sm btn-secondary" style="width:auto;padding:6px" onclick="changeQty(-1)">−</button>
+            <button class="btn btn-sm btn-secondary" style="width:auto;padding:6px" onclick="changeQty(1)">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">过期日期</label>
+          <input class="form-input" id="input-expiry" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">存放位置</label>
+          <select class="form-select" id="input-location" onchange="onLocationChange()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">备注</label>
+          <textarea class="form-textarea" id="input-notes" placeholder="备注信息..."></textarea>
+        </div>
       </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">过期日期</label>
-      <input class="form-input" id="input-expiry" type="date">
-    </div>
-    <div class="form-group">
-      <label class="form-label">存放位置</label>
-      <select class="form-select" id="input-location" onchange="onLocationChange()"></select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">
-        语音备注
-        <span style="font-weight:400;color:var(--text-muted);font-size:12px">（可选）</span>
-      </label>
-      <div style="display:flex;gap:8px;align-items:flex-start">
-        <div class="voice-result" id="voice-result">点击麦克风开始录音...</div>
-        <button class="voice-btn" id="btn-voice" onclick="toggleVoice()">🎤</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">文字备注</label>
-      <textarea class="form-textarea" id="input-notes" placeholder="备注信息..."></textarea>
-    </div>
+    </details>
     <button class="btn btn-primary" onclick="saveItem()" id="btn-save">📦 保存到冰箱</button>
   </div>
 </div>
@@ -878,14 +888,7 @@ a { color: var(--primary); text-decoration: none; }
       <label class="form-label">家庭名称</label>
       <input class="form-input" id="input-family-name" placeholder="我的家庭" onchange="saveSettings()">
     </div>
-    <div class="form-group">
-      <label class="form-label">过期提醒天数</label>
-      <select class="form-select" id="input-reminder-days" onchange="saveSettings()">
-        <option value="1">提前 1 天</option>
-        <option value="3" selected>提前 3 天</option>
-        <option value="7">提前 7 天</option>
-      </select>
-    </div>
+
     <div class="form-group">
       <label class="form-label">存放位置标签</label>
       <textarea class="form-textarea" id="input-door-labels" rows="4" placeholder="每行一个位置，如：&#10;冰箱1号门&#10;冰箱2号门&#10;储藏室&#10;厨房" onchange="saveSettings()" style="min-height:80px"></textarea>
@@ -1419,15 +1422,17 @@ async function deleteProduct(id) {
 // ============================================================
 //  POPULATE PRODUCT SELECT
 // ============================================================
-async function populateProductSelect() {
+async function populateProductSelect(silent) {
   try {
     const products = await apiGet('/api/products');
     const sel = document.getElementById('input-product');
+    if (!sel) return silent ? (products || []) : null;
     const val = sel.value;
     sel.innerHTML = '<option value="">— 从常用列表选择 —</option>' +
       products.map(p => `<option value="${p.id}" data-emoji="${p.emoji||'📦'}" data-unit="${p.unit||'个'}">${p.emoji||'📦'} ${p.name}</option>`).join('');
     sel.value = val || '';
-  } catch(e) {}
+    if (silent) return products || [];
+  } catch(e) { if (!silent) console.error(e); return []; }
 }
 
 function onProductSelect() {
@@ -1976,24 +1981,25 @@ async function itemAction(action, itemId) {
 // ============================================================
 async function saveSettings() {
   const familyName = document.getElementById('input-family-name').value.trim() || '我的家庭';
-  const reminderDays = parseInt(document.getElementById('input-reminder-days').value) || 3;
   const doorLabels = document.getElementById('input-door-labels').value.trim();
   try {
-    await apiPost('/api/settings', { key: 'familyName', value: familyName });
-    await apiPost('/api/settings', { key: 'reminderDays', value: String(reminderDays) });
-    await apiPost('/api/settings', { key: 'doorLabels', value: doorLabels });
+    await apiPost('/api/settings/all', { familyName, doorLabels });
     populateLocationSelect();
-    toast('设置已保存');
-  } catch(e) { toast('保存失败'); }
+    toast('✅ 设置已保存');
+  } catch(e) {
+    console.error('Save settings error:', e);
+    toast('❌ 保存失败: ' + e.message);
+  }
 }
 
 async function loadSettings() {
   try {
     const s = await apiGet('/api/settings');
     document.getElementById('input-family-name').value = s.familyName || '我的家庭';
-    document.getElementById('input-reminder-days').value = s.reminderDays || 3;
     document.getElementById('input-door-labels').value = s.doorLabels || '冰箱门1\n冰箱门2\n储藏室\n厨房';
-  } catch(e) {}
+  } catch(e) {
+    console.error('Load settings error:', e);
+  }
   populateLocationSelect();
 }
 

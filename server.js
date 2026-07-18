@@ -173,7 +173,7 @@ app.post('/api/register', async (req, res) => {
       tx();
 
       // Default settings
-      db.prepare('INSERT OR IGNORE INTO settings (family_id, key, value) VALUES (?, ?, ?)').run(familyId, 'reminderDays', '3');
+      
       db.prepare('INSERT OR IGNORE INTO settings (family_id, key, value) VALUES (?, ?, ?)').run(familyId, 'doorCount', '2');
     }
 
@@ -364,6 +364,19 @@ app.post('/api/settings', auth, (req, res) => {
   const { key, value } = req.body;
   if (!key) return res.status(400).json({ error: 'key 必填' });
   db.prepare('INSERT OR REPLACE INTO settings (family_id, key, value) VALUES (?, ?, ?)').run(req.user.familyId, key, String(value));
+  res.json({ success: true });
+});
+
+// Save all settings at once
+app.post('/api/settings/all', auth, (req, res) => {
+  const { familyName, doorLabels } = req.body;
+  const familyId = req.user.familyId;
+  const stmt = db.prepare('INSERT OR REPLACE INTO settings (family_id, key, value) VALUES (?, ?, ?)');
+  const tx = db.transaction(() => {
+    if (familyName !== undefined) stmt.run(familyId, 'familyName', familyName);
+    if (doorLabels !== undefined) stmt.run(familyId, 'doorLabels', doorLabels);
+  });
+  tx();
   res.json({ success: true });
 });
 
