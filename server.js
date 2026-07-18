@@ -224,8 +224,8 @@ app.delete('/api/members/:id', auth, (req, res) => {
 
 // Get invite code
 app.get('/api/family/invite', auth, (req, res) => {
-  if (req.user.role !== 'owner') return res.status(403).json({ error: '仅管理员可查看邀请码' });
   const family = db.prepare('SELECT invite_code FROM families WHERE id = ?').get(req.user.familyId);
+  if (!family) return res.status(404).json({ error: '家庭不存在' });
   res.json({ code: family.invite_code, familyId: req.user.familyId });
 });
 

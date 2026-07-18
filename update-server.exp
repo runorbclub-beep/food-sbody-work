@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+set src "/Users/xiaoningli/项目/fridge-app"
+
+spawn scp -o StrictHostKeyChecking=no $src/server.js root@$server:/root/fridge-api/server.js
+expect "password:"
+send "$password\r"
+expect eof
+sleep 1
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+send "pm2 restart fridge-api && sleep 2 && echo 'RESTARTED'\r"
+expect "RESTARTED"
+send "exit\r"
+expect eof

@@ -783,13 +783,13 @@ a { color: var(--primary); text-decoration: none; }
   <!-- Item Form -->
   <div class="card" style="margin-bottom:0">
     <div class="form-group">
-      <label class="form-label">物品名称</label>
-      <select class="form-select" id="input-product" onchange="onProductSelect()">
-        <option value="">-- 选择或输入 --</option>
-      </select>
-    </div>
-    <div class="form-group" id="custom-name-group" style="display:none">
-      <input class="form-input" id="input-custom-name" placeholder="输入自定义物品名称..." oninput="onCustomName()">
+      <label class="form-label">物品名称 <span style="font-weight:400;color:var(--text-muted);font-size:12px">选择或直接输入</span></label>
+      <div style="display:flex;gap:6px;flex-direction:column">
+        <input class="form-input" id="input-custom-name" placeholder="直接输入物品名称（如：进口牛排、自制酱料）" oninput="onNameInput()" style="font-size:16px">
+        <select class="form-select" id="input-product" onchange="onProductSelect()" style="font-size:13px;color:var(--text-muted)">
+          <option value="">— 或从常用列表选择 —</option>
+        </select>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">数量</label>
@@ -842,9 +842,13 @@ a { color: var(--primary); text-decoration: none; }
 <div id="page-family" class="page">
   <div class="card">
     <div class="card-title">👨‍👩‍👧‍👧 家庭成员</div>
+    <div id="invite-section" class="card" style="background:var(--primary-bg);padding:12px;text-align:center;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">📨 邀请码（分享给家人注册时填写）</div>
+      <div id="invite-code-display" style="font-size:24px;font-weight:700;color:var(--primary);letter-spacing:6px;font-family:monospace">------</div>
+    </div>
     <ul class="member-list" id="member-list"></ul>
-    <div style="margin-top:12px;font-size:12px;color:var(--text-secondary);text-align:center;padding:8px">
-      💡 新成员注册时输入邀请码即可加入家庭
+    <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);text-align:center;padding:4px">
+      💡 新成员注册时填写邀请码即可加入
     </div>
   </div>
   <div class="card">
@@ -871,15 +875,9 @@ a { color: var(--primary); text-decoration: none; }
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">冰箱门数量</label>
-      <select class="form-select" id="input-door-count" onchange="saveSettings()">
-        <option value="1">1 个门</option>
-        <option value="2" selected>2 个门</option>
-        <option value="3">3 个门</option>
-        <option value="4">4 个门</option>
-        <option value="5">5 个门</option>
-      </select>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">每个门对应一个传感器编号（Pro版本）</div>
+      <label class="form-label">存放位置标签</label>
+      <textarea class="form-textarea" id="input-door-labels" rows="4" placeholder="每行一个位置，如：&#10;冰箱1号门&#10;冰箱2号门&#10;储藏室&#10;厨房" onchange="saveSettings()" style="min-height:80px"></textarea>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">每行一个位置名称。默认：冰箱门1/冰箱门2/储藏室/厨房</div>
     </div>
   </div>
   <div class="card">
@@ -1318,17 +1316,13 @@ async function renderFamily() {
       </li>
     `).join('');
 
-    // Show invite code for owner
-    if (currentUser.role === 'owner') {
-      try {
-        const inv = await apiGet('/api/family/invite');
-        list.innerHTML += `<li class="member-li" style="justify-content:center;padding:14px">
-          <div style="text-align:center">
-            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">📨 邀请码（分享给家人注册）</div>
-            <div style="font-size:22px;font-weight:700;color:var(--primary);letter-spacing:4px;font-family:monospace">${inv.code}</div>
-          </div>
-        </li>`;
-      } catch(e) {}
+    // Show invite code
+    try {
+      const inv = await apiGet('/api/family/invite');
+      document.getElementById('invite-code-display').textContent = inv.code;
+      document.getElementById('invite-section').style.display = 'block';
+    } catch(e) {
+      document.getElementById('invite-section').style.display = 'none';
     }
   } catch(e) {
     toast('加载家庭成员失败');
@@ -1418,7 +1412,7 @@ async function populateProductSelect() {
     const products = await apiGet('/api/products');
     const sel = document.getElementById('input-product');
     const val = sel.value;
-    sel.innerHTML = '<option value="">-- 选择或输入 --</option><option value="__custom__">✏️ 自定义输入...</option>' +
+    sel.innerHTML = '<option value="">— 从常用列表选择 —</option>' +
       products.map(p => `<option value="${p.id}" data-emoji="${p.emoji||'📦'}" data-unit="${p.unit||'个'}">${p.emoji||'📦'} ${p.name}</option>`).join('');
     sel.value = val || '';
   } catch(e) {}
@@ -1426,26 +1420,19 @@ async function populateProductSelect() {
 
 function onProductSelect() {
   const sel = document.getElementById('input-product');
-  const customGroup = document.getElementById('custom-name-group');
-  if (sel.value === '__custom__') {
-    customGroup.style.display = 'block';
-    useCustomProduct = true;
-    document.getElementById('input-custom-name').value = '';
-    document.getElementById('input-custom-name').focus();
-  } else if (sel.value) {
-    customGroup.style.display = 'none';
-    useCustomProduct = false;
+  const customInput = document.getElementById('input-custom-name');
+  if (sel.value) {
     const opt = sel.options[sel.selectedIndex];
+    customInput.value = opt.text.replace(/^[^\s]+\s/, '');
     const unit = opt.dataset.unit || '个';
     document.getElementById('input-unit-display').textContent = unit;
-  } else {
-    customGroup.style.display = 'none';
     useCustomProduct = false;
   }
 }
 
-function onCustomName() {
-  useCustomProduct = true;
+function onNameInput() {
+  const customInput = document.getElementById('input-custom-name');
+  useCustomProduct = customInput.value.trim().length > 0;
 }
 
 const LOCATION_LABELS = {
@@ -1455,15 +1442,23 @@ const LOCATION_LABELS = {
 };
 
 function getLocationOptions() {
-  const settings = document.getElementById('input-door-count');
-  const count = parseInt(settings?.value) || 2;
-  const options = [];
-  for (let i = 1; i <= count; i++) {
-    options.push({ value: 'door-' + i, label: '🚪冰箱门' + i });
+  const el = document.getElementById('input-door-labels');
+  const raw = el ? el.value.trim() : '';
+  const lines = raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  if (lines.length === 0) {
+    // Default
+    return [
+      { value: 'door-1', label: '🚪冰箱门1' },
+      { value: 'door-2', label: '🚪冰箱门2' },
+      { value: 'pantry', label: '🗄️储藏室' },
+      { value: 'kitchen', label: '🍳厨房' },
+    ];
   }
-  options.push({ value: 'pantry', label: '🗄️储藏室' });
-  options.push({ value: 'kitchen', label: '🍳厨房' });
-  return options;
+  return lines.map((label, i) => {
+    const isFridge = /冰箱|fridge|冷/i.test(label);
+    const val = isFridge ? 'door-' + i : (label === '储藏室' || label === 'pantry' ? 'pantry' : label === '厨房' || label === 'kitchen' ? 'kitchen' : 'loc-' + i);
+    return { value: val, label: label };
+  });
 }
 
 function populateLocationSelect() {
@@ -1738,6 +1733,7 @@ function resetAddForm() {
   document.getElementById('input-custom-name').value = '';
   document.getElementById('custom-name-group').style.display = 'none';
   document.getElementById('input-product').value = '';
+  document.getElementById('input-custom-name').value = '';
   document.getElementById('input-unit-display').textContent = '个';
   document.getElementById('voice-result').textContent = '点击麦克风开始录音...';
   useCustomProduct = false;
@@ -1981,11 +1977,11 @@ async function itemAction(action, itemId) {
 async function saveSettings() {
   const familyName = document.getElementById('input-family-name').value.trim() || '我的家庭';
   const reminderDays = parseInt(document.getElementById('input-reminder-days').value) || 3;
-  const doorCount = parseInt(document.getElementById('input-door-count').value) || 2;
+  const doorLabels = document.getElementById('input-door-labels').value.trim();
   try {
     await apiPost('/api/settings', { key: 'familyName', value: familyName });
     await apiPost('/api/settings', { key: 'reminderDays', value: String(reminderDays) });
-    await apiPost('/api/settings', { key: 'doorCount', value: String(doorCount) });
+    await apiPost('/api/settings', { key: 'doorLabels', value: doorLabels });
     populateLocationSelect();
     toast('设置已保存');
   } catch(e) { toast('保存失败'); }
@@ -1996,7 +1992,7 @@ async function loadSettings() {
     const s = await apiGet('/api/settings');
     document.getElementById('input-family-name').value = s.familyName || '我的家庭';
     document.getElementById('input-reminder-days').value = s.reminderDays || 3;
-    document.getElementById('input-door-count').value = s.doorCount || 2;
+    document.getElementById('input-door-labels').value = s.doorLabels || '冰箱门1\n冰箱门2\n储藏室\n厨房';
   } catch(e) {}
   populateLocationSelect();
 }
