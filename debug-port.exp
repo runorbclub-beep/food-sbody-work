@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check what's listening on port 3002
+send "ss -tlnp | grep 3002\r"
+expect "#"
+
+# Check if Express is listening on 0.0.0.0
+send "cat /root/fridge-api/server.js | grep -i 'listen\\|0.0.0.0\\|host'\r"
+expect "#"
+
+# Test via localhost
+send "curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"test\",\"password\":\"test1234\"}' | head -c 200\r"
+expect "#"
+
+# Check if there's a WAF/mod_security
+send "ls /etc/modsecurity* 2>/dev/null; ls /etc/csf/ 2>/dev/null; echo '---done---'\r"
+expect "#"
+
+send "exit\r"
+expect eof

@@ -1,0 +1,45 @@
+#!/usr/bin/expect -f
+set timeout 300
+set server "129.212.236.200"
+set password "ZH@19880401n"
+set src_dir "/Users/xiaoningli/项目/fridge-app"
+
+# SSH and set up
+spawn ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "cd /root/fridge-api\r"
+expect "#"
+
+# Check if node_modules exists
+send "ls node_modules/express/index.js 2>/dev/null && echo 'DEPS_OK' || echo 'NEED_INSTALL'\r"
+expect "#"
+
+# Install if needed
+send "ls node_modules/express/index.js 2>/dev/null || (npm install express better-sqlite3 jsonwebtoken bcryptjs cors 2>&1 | tail -3)\r"
+expect "#"
+
+# Check PM2
+send "which pm2 2>/dev/null || (npm install -g pm2 2>&1 | tail -3)\r"
+expect "#"
+
+# Stop old process
+send "pm2 stop fridge-api 2>/dev/null; pm2 delete fridge-api 2>/dev/null\r"
+expect "#"
+
+# Start server
+send "cd /root/fridge-api && pm2 start server.js --name fridge-api\r"
+expect "#"
+send "sleep 3\r"
+expect "#"
+send "pm2 list\r"
+expect "#"
+
+# Test the API
+send "curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"testuser\",\"password\":\"test1234\",\"familyName\":\"测试家庭\"}' 2>&1 | head -c 300\r"
+expect "#"
+
+send "exit\r"
+expect eof

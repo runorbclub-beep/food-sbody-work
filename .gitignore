@@ -1,0 +1,4 @@
+node_modules/
+fridge.db
+*.log
+.DS_Store

@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check nginx config for fridge-api
+send "cat /etc/nginx/sites-available/fridge-api\r"
+expect "#"
+
+# Check default nginx config
+send "cat /etc/nginx/sites-enabled/default 2>/dev/null | head -20\r"
+expect "#"
+
+# Check if default has 301 redirect
+send "curl -sI http://localhost/ 2>&1 | head -10\r"
+expect "#"
+
+send "exit\r"
+expect eof

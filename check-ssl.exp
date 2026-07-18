@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check the nginx config
+send "cat /etc/nginx/sites-enabled/fridge-api\r"
+expect "#"
+
+send "exit\r"
+expect eof

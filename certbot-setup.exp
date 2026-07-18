@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set timeout 120
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Run certbot
+send "certbot --nginx -d api.food.sbody.work --non-interactive --agree-tos --email runorbclub@gmail.com 2>&1 | tail -20\r"
+expect "#"
+
+# Check if cert was obtained
+send "ls /etc/letsencrypt/live/api.food.sbody.work/ 2>/dev/null && echo 'CERT_OK' || echo 'CERT_FAIL'\r"
+expect "#"
+
+# Reload nginx
+send "nginx -t && nginx -s reload && echo 'NGINX_OK'\r"
+expect "#"
+
+send "exit\r"
+expect eof

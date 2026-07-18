@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+set timeout 60
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "which certbot && certbot --version 2>&1 | head -2\r"
+expect "#"
+send "which letsencrypt 2>/dev/null || echo 'no letsencrypt'\r"
+expect "#"
+
+# Check if certbot has DNS plugins
+send "certbot plugins 2>&1 | head -20\r"
+expect "#"
+
+send "exit\r"
+expect eof

@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check nginx SSL protocols
+send "nginx -T 2>&1 | grep -E 'ssl_protocols|ssl_ciphers|ssl_prefer' | head -10\r"
+expect "#"
+send "echo '---'\r"
+expect "#"
+
+# Check the full SSL config for fridge-api
+send "nginx -T 2>&1 | sed -n '/server_name api.food/,/^}/p' | head -40\r"
+expect "#"
+
+# Test with specific TLS version
+send "curl -sk --tlsv1.2 'https://127.0.0.1/api/register' -H 'Host: api.food.sbody.work' -X POST -H 'Content-Type: application/json' -d '{\"name\":\"tls12\",\"password\":\"test1234\"}' 2>&1 | head -c 200\r"
+expect "#"
+
+send "exit\r"
+expect eof

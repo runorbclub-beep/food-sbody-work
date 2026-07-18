@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "ufw allow 3002/tcp comment 'fridge-api direct' && ufw status | grep 3002\r"
+expect "#"
+send "echo '---'\r"
+expect "#"
+
+# Test from external perspective
+send "curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"x\",\"password\":\"test1234\"}' 2>&1 | head -c 200\r"
+expect "#"
+
+send "exit\r"
+expect eof

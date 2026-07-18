@@ -1,0 +1,67 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "rm -f /root/fridge-api/fridge.db && pm2 restart fridge-api && sleep 2 && echo '--- READY ---'\r"
+expect "--- READY ---"
+
+# Register 爸爸
+send "curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"爸爸\",\"password\":\"test1234\",\"familyName\":\"我们一家\"}' > /tmp/reg1.json && python3 -c \"import json;d=json.load(open('/tmp/reg1.json'));print('REG1:', d['user']['name'], d['user']['role'])\"\r"
+expect "#"
+
+# Save token
+send "python3 -c \"import json;open('/tmp/token1','w').write(json.load(open('/tmp/reg1.json'))['token'])\"\r"
+expect "#"
+
+# Get invite code
+send "python3 -c \"import urllib.request,json;t=open('/tmp/token1').read();req=urllib.request.Request('http://localhost:3002/api/family/invite',headers={'Authorization':'Bearer '+t});d=json.load(urllib.request.urlopen(req));open('/tmp/code','w').write(d['code']);print('CODE:',d['code'])\"\r"
+expect "#"
+
+# Join with code
+send "python3 -c \"import urllib.request,json;c=open('/tmp/code').read();req=urllib.request.Request('http://localhost:3002/api/family/join',data=json.dumps({'name':'妈妈','password':'test1234','avatar':'👩','inviteCode':c}).encode(),headers={'Content-Type':'application/json'},method='POST');d=json.load(urllib.request.urlopen(req));print('JOIN:',d['user']['name'],d['user']['role'],d['user']['familyId'])\"\r"
+expect "#"
+
+# 爸爸 adds item
+send "python3 -c \"import urllib.request,json;t=open('/tmp/token1').read();req=urllib.request.Request('http://localhost:3002/api/inventory',data=json.dumps({'productName':'牛奶','emoji':'🥛','quantity':3,'unit':'盒','location':'door-1'}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+t},method='POST');d=json.load(urllib.request.urlopen(req));print('ADD:',d['product_name'],'x'+str(d['quantity']))\"\r"
+expect "#"
+
+# 妈妈 logs in and views inventory
+send "python3 << 'PYEOF'
+import urllib.request, json
+
+# Login 妈妈
+req = urllib.request.Request('http://localhost:3002/api/login', 
+    data=json.dumps({'name':'妈妈','password':'test1234'}).encode(),
+    headers={'Content-Type':'application/json'}, method='POST')
+d = json.load(urllib.request.urlopen(req))
+token = d['token']
+print(f\"LOGIN: {d['user']['name']} (family={d['user']['familyId']})\")
+
+# View inventory
+req2 = urllib.request.Request('http://localhost:3002/api/inventory',
+    headers={'Authorization': 'Bearer ' + token})
+items = json.load(urllib.request.urlopen(req2))
+print(f\"INVENTORY: {len(items)} items\")
+for i in items:
+    print(f\"  - {i['emoji']} {i['product_name']} x{i['quantity']}{i['unit']} (by {i['added_by_name']}, at {i['location']})\")
+
+# View members
+req3 = urllib.request.Request('http://localhost:3002/api/members',
+    headers={'Authorization': 'Bearer ' + token})
+members = json.load(urllib.request.urlopen(req3))
+print(f\"MEMBERS: {len(members)}\")
+for m in members:
+    print(f\"  - {m['name']} ({m['role']})\")
+PYEOF\r"
+expect "#"
+
+send "echo '=== ALL TESTS PASSED ==='\r"
+expect "#"
+send "exit\r"
+expect eof

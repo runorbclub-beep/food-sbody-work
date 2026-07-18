@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "rm -f /root/fridge-api/fridge.db && pm2 restart fridge-api && sleep 2 && echo 'CLEAN'\r"
+expect "CLEAN"
+
+send "exit\r"
+expect eof

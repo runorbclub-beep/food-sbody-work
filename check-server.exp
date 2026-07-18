@@ -1,0 +1,21 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check what's available
+send "which node && node --version && which npm && npm --version\r"
+expect "#"
+send "which sqlite3 || apt-get install -y sqlite3 2>&1 | tail -3\r"
+expect "#"
+send "node -e \"console.log('ok')\" 2>&1\r"
+expect "#"
+send "ls /var/www/html/ 2>/dev/null\r"
+expect "#"
+send "exit\r"
+expect eof

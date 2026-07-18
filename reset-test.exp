@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "rm -f /root/fridge-api/fridge.db && pm2 restart fridge-api --update-env && sleep 3 && curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"owner\",\"password\":\"test1234\",\"familyName\":\"home\"}' | python3 -c \"import sys,json;d=json.load(sys.stdin);print('REG:',d['user']['name'],d['user']['role'],d['isFirst'])\" 2>&1\r"
+expect "#"
+
+send "exit\r"
+expect eof

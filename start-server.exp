@@ -1,0 +1,62 @@
+#!/usr/bin/expect -f
+set timeout 60
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Start with PM2
+send "which pm2 2>/dev/null || npm install -g pm2 2>&1 | tail -3\r"
+expect "#"
+send "cd /root/fridge-api && pm2 start server.js --name fridge-api 2>&1\r"
+expect "#"
+send "sleep 3\r"
+expect "#"
+
+# Check status
+send "pm2 list\r"
+expect "#"
+
+# Test register
+send "curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"testuser\",\"password\":\"test1234\",\"familyName\":\"我的家\"}' 2>&1\r"
+expect "#"
+
+# Test login
+send "curl -s http://localhost:3002/api/login -X POST -H 'Content-Type: application/json' -d '{\"name\":\"testuser\",\"password\":\"test1234\"}' 2>&1\r"
+expect "#"
+
+# Clean up test
+send "rm -f /root/fridge-api/fridge.db && echo 'test db cleaned'\r"
+expect "#"
+
+# Set up nginx reverse proxy
+send "cat > /etc/nginx/sites-available/fridge-api << 'EOF'
+server {
+    listen 80;
+    server_name api.food-sbody.work;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \\\$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \\\$host;
+        proxy_set_header X-Real-IP \\\$remote_addr;
+        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\\$scheme;
+        proxy_read_timeout 86400;
+    }
+}
+EOF
+echo 'nginx config created'\r"
+expect "#"
+send "ln -sf /etc/nginx/sites-available/fridge-api /etc/nginx/sites-enabled/ && nginx -t && nginx -s reload && echo 'nginx reloaded OK'\r"
+expect "#"
+
+send "exit\r"
+expect eof

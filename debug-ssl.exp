@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check default server for SSL
+send "nginx -T 2>&1 | grep -B5 'listen 443' | head -40\r"
+expect "#"
+
+# Check if there's a default ssl server
+send "nginx -T 2>&1 | grep 'default_server' | head -5\r"
+expect "#"
+
+# Test SSL locally
+send "curl -sk 'https://127.0.0.1/api/register' -H 'Host: api.food.sbody.work' -X POST -H 'Content-Type: application/json' -d '{\"name\":\"test-local\",\"password\":\"test1234\"}' 2>&1 | head -c 300\r"
+expect "#"
+
+send "exit\r"
+expect eof

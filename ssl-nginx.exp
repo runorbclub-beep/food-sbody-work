@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Generate self-signed SSL cert
+send "mkdir -p /etc/nginx/ssl && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/nginx/ssl/fridge.key -out /etc/nginx/ssl/fridge.crt -subj '/CN=fridge-api' 2>&1 | tail -3\r"
+expect "#"
+
+# Update nginx config to include HTTPS
+send "cat > /etc/nginx/sites-available/fridge-api << 'EOF'
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name api.food.sbody.work api.food-sbody.work;
+
+    ssl_certificate /etc/nginx/ssl/fridge.crt;
+    ssl_certificate_key /etc/nginx/ssl/fridge.key;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 86400;
+    }
+}
+EOF
+echo 'Updated nginx config'\r"
+expect "#"
+send "nginx -t && nginx -s reload && echo 'nginx OK'\r"
+expect "#"
+
+# Test via localhost:443
+send "curl -sk https://localhost/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"test-ssl\",\"password\":\"test1234\",\"familyName\":\"t\"}' | head -c 200\r"
+expect "#"
+
+send "exit\r"
+expect eof

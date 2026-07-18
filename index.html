@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>冰箱管家 - Fridge Manager</title>
+<meta name="description" content="家庭冰箱物品管理系统 - 拍照记录、语音输入、库存管理、过期提醒">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="manifest" href="/manifest.json">
+<style>
+/* ===== CSS Variables & Reset ===== */
+:root {
+  --primary: #2E7D32;
+  --primary-light: #4CAF50;
+  --primary-bg: #E8F5E9;
+  --accent: #FF9800;
+  --danger: #F44336;
+  --danger-bg: #FFEBEE;
+  --bg: #F5F7F5;
+  --card: #FFFFFF;
+  --text: #1A1A2E;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --border: #E0E0E0;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.12);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --nav-height: 60px;
+  --header-height: 56px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  overflow-x: hidden;
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
+}
+input, textarea, select, button { font-family: inherit; font-size: inherit; }
+a { color: var(--primary); text-decoration: none; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+/* ===== Login Screen ===== */
+.login-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  z-index: 999;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+.login-overlay.show { display: flex; }
+.login-box {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+  text-align: center;
+}
+.login-box .logo { font-size: 56px; margin-bottom: 8px; }
+.login-box h2 { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.login-box .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+.login-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+.login-tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.login-tab.active { background: white; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.login-error {
+  font-size: 13px;
+  color: var(--danger);
+  margin-bottom: 12px;
+  min-height: 20px;
+}
+.login-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.login-btn:active { transform: scale(0.98); }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-hint { font-size: 12px; color: var(--text-muted); margin-top: 16px; }
+
+/* ===== Header ===== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(10px);
+}
+.app-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-header h1 span { font-size: 22px; }
+.header-actions { display: flex; gap: 8px; }
+.header-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  transition: background 0.2s;
+}
+.header-btn:hover { background: var(--bg); }
+.header-btn .badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.header-btn-wrap { position: relative; }
+
+/* ===== Page Views ===== */
+.page {
+  display: none;
+  padding: 12px 16px 20px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.page.active { display: block; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== Bottom Nav ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--nav-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 4px 0;
+}
+.nav-item .nav-icon { font-size: 22px; line-height: 1; }
+.nav-item.active { color: var(--primary); }
+.nav-item.active .nav-icon { font-weight: 700; }
+.nav-add {
+  position: relative;
+  top: -12px;
+}
+.nav-add .nav-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 4px 12px rgba(46,125,50,0.35);
+  transition: transform 0.2s;
+}
+.nav-add .nav-icon:active { transform: scale(0.92); }
+.nav-add span { margin-top: -4px; font-size: 9px; color: var(--primary); font-weight: 600; }
+
+/* ===== Cards & Components ===== */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-title .link { color: var(--primary); font-size: 13px; font-weight: 500; cursor: pointer; }
+
+/* ===== Dashboard Stats ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-card .stat-num {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.stat-card .stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.stat-card.warning .stat-num { color: var(--accent); }
+.stat-card.danger .stat-num { color: var(--danger); }
+
+/* ===== Items List ===== */
+.item-list { list-style: none; }
+.item-li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.item-li:last-child { border-bottom: none; }
+.item-emoji {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-bg);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.item-info { flex: 1; min-width: 0; }
+.item-name {
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.item-qty {
+  text-align: right;
+  flex-shrink: 0;
+}
+.item-qty .num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.item-qty .unit { font-size: 12px; color: var(--text-secondary); }
+.item-actions {
+  display: flex;
+  gap: 4px;
+}
+.item-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.item-btn:hover { background: var(--bg); }
+.item-btn.danger { color: var(--danger); border-color: var(--danger); }
+.item-btn.danger:hover { background: var(--danger-bg); }
+
+/* ===== Forms ===== */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 15px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--primary);
+  background: white;
+}
+.form-textarea { resize: vertical; min-height: 60px; }
+.form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #1B5E20; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-secondary { background: var(--bg); color: var(--text); border: 1.5px solid var(--border); }
+.btn-secondary:hover { background: #E0E0E0; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #D32F2F; }
+.btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-sm { padding: 6px 14px; font-size: 13px; width: auto; }
+.btn-group { display: flex; gap: 8px; }
+.btn-group .btn { flex: 1; }
+
+/* ===== Camera ===== */
+.camera-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.camera-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.camera-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.camera-overlay {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+.camera-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid white;
+  background: rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.camera-btn:active { transform: scale(0.9); }
+.camera-btn.capture { background: white; }
+.camera-btn.switch { width: 40px; height: 40px; border-width: 2px; align-self: center; font-size: 18px; display: flex; align-items: center; justify-content: center; color: white; }
+
+/* ===== Voice ===== */
+.voice-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.voice-btn.recording {
+  background: var(--danger);
+  animation: pulse 0.8s infinite;
+}
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+.voice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.voice-result {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+/* ===== Expiry Badge ===== */
+.badge-expiry {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.badge-expiry.normal { background: var(--primary-bg); color: var(--primary); }
+.badge-expiry.soon { background: #FFF3E0; color: #E65100; }
+.badge-expiry.expired { background: var(--danger-bg); color: var(--danger); }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--card);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: var(--shadow-lg);
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 16px; margin-bottom: 6px; color: var(--text-secondary); }
+.empty-state p { font-size: 13px; }
+
+/* ===== Activity Timeline ===== */
+.timeline { position: relative; padding-left: 20px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-item {
+  position: relative;
+  padding-bottom: 16px;
+}
+.timeline-dot {
+  position: absolute;
+  left: -16px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  border: 2px solid var(--primary-bg);
+}
+.timeline-item.add .timeline-dot { background: var(--primary); }
+.timeline-item.consume .timeline-dot { background: var(--accent); }
+.timeline-item.remove .timeline-dot { background: var(--danger); }
+.timeline-text { font-size: 14px; }
+.timeline-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* ===== Member Avatars ===== */
+.member-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.member-list { list-style: none; }
+.member-li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.member-li:last-child { border-bottom: none; }
+.member-info { flex: 1; }
+.member-name { font-weight: 600; font-size: 15px; }
+.member-role { font-size: 11px; color: var(--text-muted); }
+.member-role.owner { color: var(--accent); }
+
+/* ===== Search ===== */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+.search-bar input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 14px;
+}
+.search-bar .search-icon { font-size: 16px; color: var(--text-muted); }
+
+/* ===== Category Tabs ===== */
+.category-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.category-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.category-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* ===== Notification Toast ===== */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--text);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  z-index: 300;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== Responsive ===== */
+@media (min-width: 768px) {
+  body { max-width: 480px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div class="login-overlay show" id="login-screen">
+  <div class="login-box">
+    <div class="logo">🧊</div>
+    <h2>冰箱管家</h2>
+    <p class="subtitle">家庭冰箱物品管理系统</p>
+
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-login" onclick="switchLoginTab('login')">登录</button>
+      <button class="login-tab" id="tab-register" onclick="switchLoginTab('register')">注册</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">用户名称</label>
+        <input class="form-input" id="login-name" placeholder="输入你的称呼" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">密码</label>
+        <input class="form-input" id="login-password" type="password" placeholder="输入密码" autocomplete="off">
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">🔑 登录</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">邀请码 <span style="font-weight:400;color:var(--text-muted);font-size:12px">（已有家庭？填管理员给的邀请码加入）</span></label>
+        <input class="form-input" id="register-invite" placeholder="留空则创建新家庭" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">请设定你的称呼</label>
+        <input class="form-input" id="register-name" placeholder="如：爸爸、妈妈、小明" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">头像</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px;background:var(--primary-bg)" onclick="pickAvatar(this)">😊</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">😎</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">👩</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">👨</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">👧</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">👦</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">🧓</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">👵</span>
+          <span style="cursor:pointer;font-size:28px;padding:4px 8px;border-radius:8px" onclick="pickAvatar(this)">🧑</span>
+        </div>
+        <input type="hidden" id="register-avatar" value="😊">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">设定密码</label>
+        <input class="form-input" id="register-password" type="password" placeholder="至少4位密码" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="text-align:left">确认密码</label>
+        <input class="form-input" id="register-password2" type="password" placeholder="再次输入密码" autocomplete="new-password">
+      </div>
+      <div class="login-error" id="register-error"></div>
+      <button class="login-btn" id="register-btn" onclick="doRegister()">✅ 注册</button>
+    </div>
+
+    <p class="login-hint">💡 每个家庭成员注册自己的账号，共享冰箱库存</p>
+  </div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header class="app-header">
+  <h1><span>🧊</span> 冰箱管家</h1>
+  <div class="header-actions">
+    <button class="header-btn" onclick="showPage('family')" title="家庭成员">👨‍👩‍👧‍👦</button>
+    <button class="header-btn-wrap">
+      <button class="header-btn" onclick="showPage('settings')" title="设置">⚙️</button>
+    </button>
+  </div>
+</header>
+
+<!-- ===== DASHBOARD PAGE ===== -->
+<div id="page-dashboard" class="page active">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">库存总数</div></div>
+    <div class="stat-card warning"><div class="stat-num" id="stat-soon">0</div><div class="stat-label">即将过期</div></div>
+    <div class="stat-card danger"><div class="stat-num" id="stat-expired">0</div><div class="stat-label">已过期</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📍 位置分布</div>
+    <div id="location-summary" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚠️ 即将过期 <span class="link" onclick="showPage('inventory')">查看全部 →</span></div>
+    <div id="expiring-list"><div class="empty-state"><p>暂无即将过期的物品 🎉</p></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 最近动态</div>
+    <div id="recent-activity"><div class="empty-state"><p>暂无记录</p></div></div>
+  </div>
+</div>
+
+<!-- ===== INVENTORY PAGE ===== -->
+<div id="page-inventory" class="page">
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="inv-search" placeholder="搜索物品..." oninput="renderInventory()">
+  </div>
+  <div class="category-tabs" id="category-tabs"></div>
+  <div id="inventory-list"></div>
+</div>
+
+<!-- ===== ADD ITEM PAGE ===== -->
+<div id="page-add" class="page">
+  <!-- Camera -->
+  <div class="camera-container" id="camera-container">
+    <video id="camera-video" autoplay playsinline muted></video>
+    <img id="camera-preview" style="display:none">
+    <div class="camera-overlay" id="camera-overlay">
+      <button class="camera-btn switch" id="btn-switch-camera" onclick="switchCamera()">🔄</button>
+      <button class="camera-btn capture" id="btn-capture" onclick="capturePhoto()"></button>
+      <button class="camera-btn" id="btn-retake" style="display:none" onclick="retakePhoto()">↩️</button>
+    </div>
+  </div>
+
+  <!-- Item Form -->
+  <div class="card" style="margin-bottom:0">
+    <div class="form-group">
+      <label class="form-label">物品名称</label>
+      <select class="form-select" id="input-product" onchange="onProductSelect()">
+        <option value="">-- 选择或输入 --</option>
+      </select>
+    </div>
+    <div class="form-group" id="custom-name-group" style="display:none">
+      <input class="form-input" id="input-custom-name" placeholder="输入自定义物品名称..." oninput="onCustomName()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">数量</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" id="input-qty" type="number" min="0.1" step="0.1" value="1" style="flex:1;text-align:center;font-size:18px;font-weight:700">
+        <span style="font-size:14px;color:var(--text-secondary)" id="input-unit-display">个</span>
+        <button class="btn btn-sm btn-secondary" style="width:auto;padding:6px" onclick="changeQty(-1)">−</button>
+        <button class="btn btn-sm btn-secondary" style="width:auto;padding:6px" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">过期日期</label>
+      <input class="form-input" id="input-expiry" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">存放位置</label>
+      <select class="form-select" id="input-location" onchange="onLocationChange()"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">
+        语音备注
+        <span style="font-weight:400;color:var(--text-muted);font-size:12px">（可选）</span>
+      </label>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div class="voice-result" id="voice-result">点击麦克风开始录音...</div>
+        <button class="voice-btn" id="btn-voice" onclick="toggleVoice()">🎤</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">文字备注</label>
+      <textarea class="form-textarea" id="input-notes" placeholder="备注信息..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="saveItem()" id="btn-save">📦 保存到冰箱</button>
+  </div>
+</div>
+
+<!-- ===== PRODUCTS PAGE ===== -->
+<div id="page-products" class="page">
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="prod-search" placeholder="搜索产品库..." oninput="renderProducts()">
+  </div>
+  <div style="margin-bottom:12px">
+    <button class="btn btn-secondary" onclick="showProductModal()">➕ 添加新产品</button>
+  </div>
+  <div id="product-list"></div>
+</div>
+
+<!-- ===== FAMILY PAGE ===== -->
+<div id="page-family" class="page">
+  <div class="card">
+    <div class="card-title">👨‍👩‍👧‍👧 家庭成员</div>
+    <ul class="member-list" id="member-list"></ul>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-secondary);text-align:center;padding:8px">
+      💡 新成员注册时输入邀请码即可加入家庭
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📦 产品库</div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">管理常用食品清单，添加时可以快速选择。</p>
+    <button class="btn btn-outline" onclick="showPage('products')">📋 管理产品库</button>
+  </div>
+</div>
+
+<!-- ===== SETTINGS PAGE ===== -->
+<div id="page-settings" class="page">
+  <div class="card">
+    <div class="card-title">⚙️ 设置</div>
+    <div class="form-group">
+      <label class="form-label">家庭名称</label>
+      <input class="form-input" id="input-family-name" placeholder="我的家庭" onchange="saveSettings()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">过期提醒天数</label>
+      <select class="form-select" id="input-reminder-days" onchange="saveSettings()">
+        <option value="1">提前 1 天</option>
+        <option value="3" selected>提前 3 天</option>
+        <option value="7">提前 7 天</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">冰箱门数量</label>
+      <select class="form-select" id="input-door-count" onchange="saveSettings()">
+        <option value="1">1 个门</option>
+        <option value="2" selected>2 个门</option>
+        <option value="3">3 个门</option>
+        <option value="4">4 个门</option>
+        <option value="5">5 个门</option>
+      </select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">每个门对应一个传感器编号（Pro版本）</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📊 数据管理</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-outline" onclick="logout()">🚪 退出登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showPage('dashboard')">
+    <span class="nav-icon">🏠</span>
+    <span>首页</span>
+  </button>
+  <button class="nav-item" onclick="showPage('inventory')">
+    <span class="nav-icon">📋</span>
+    <span>库存</span>
+  </button>
+  <button class="nav-item nav-add" onclick="showPage('add')">
+    <span class="nav-icon">📸</span>
+    <span>记录</span>
+  </button>
+  <button class="nav-item" onclick="showPage('products')">
+    <span class="nav-icon">🏪</span>
+    <span>产品库</span>
+  </button>
+  <button class="nav-item" onclick="showPage('settings')">
+    <span class="nav-icon">⚙️</span>
+    <span>设置</span>
+  </button>
+</nav>
+
+<!-- ===== MODAL: Product ===== -->
+<div class="modal-overlay" id="modal-product">
+  <div class="modal">
+    <div class="modal-title">添加产品 <button class="modal-close" onclick="closeModal('modal-product')">✕</button></div>
+    <div class="form-group">
+      <label class="form-label">产品名称</label>
+      <input class="form-input" id="modal-prod-name" placeholder="如：牛奶、鸡蛋、青菜">
+    </div>
+    <div class="form-group">
+      <label class="form-label">分类</label>
+      <select class="form-select" id="modal-prod-category">
+        <option value="乳制品">🥛 乳制品</option>
+        <option value="蛋类">🥚 蛋类</option>
+        <option value="肉类">🥩 肉类</option>
+        <option value="海鲜">🦐 海鲜</option>
+        <option value="蔬菜">🥬 蔬菜</option>
+        <option value="水果">🍎 水果</option>
+        <option value="饮品">🧃 饮品</option>
+        <option value="调味品">🧂 调味品</option>
+        <option value="冷冻食品">🧊 冷冻食品</option>
+        <option value="干货">🌰 干货</option>
+        <option value="其他">📦 其他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Emoji</label>
+      <input class="form-input" id="modal-prod-emoji" placeholder="🥛" maxlength="2" style="width:80px;text-align:center;font-size:24px">
+    </div>
+    <div class="form-group">
+      <label class="form-label">默认单位</label>
+      <input class="form-input" id="modal-prod-unit" placeholder="个 / 瓶 / 箱 / kg" value="个">
+    </div>
+    <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+  </div>
+</div>
+
+
+
+<!-- ===== MODAL: Item Detail ===== -->
+<div class="modal-overlay" id="modal-item">
+  <div class="modal">
+    <div class="modal-title" id="modal-item-title">物品详情 <button class="modal-close" onclick="closeModal('modal-item')">✕</button></div>
+    <div id="modal-item-content"></div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+// ============================================================
+//  CLOUD API CLIENT
+// ============================================================
+const API_BASE = 'https://api.food.sbody.work';
+
+function getToken() { return localStorage.getItem('fridge_token'); }
+
+async function apiCall(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  const token = getToken();
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body) opts.body = JSON.stringify(body);
+
+  const resp = await fetch(API_BASE + path, opts);
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || '请求失败');
+  return data;
+}
+
+function apiGet(path) { return apiCall('GET', path); }
+function apiPost(path, body) { return apiCall('POST', path, body); }
+function apiPatch(path, body) { return apiCall('PATCH', path, body); }
+function apiDel(path) { return apiCall('DELETE', path); }
+
+// ============================================================
+//  LOCAL FALLBACK — keep IndexedDB for offline cache
+// ============================================================
+const DB_NAME = 'FridgeManager';
+const DB_VERSION = 3;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('products'))
+        db.createObjectStore('products', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('inventory'))
+        db.createObjectStore('inventory', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('members'))
+        db.createObjectStore('members', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('activity'))
+        db.createObjectStore('activity', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('settings'))
+        db.createObjectStore('settings', { keyPath: 'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbAll(store) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => { resolve(req.result); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  }));
+}
+function dbPut(store, val) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(val);
+    req.onsuccess = () => { resolve(); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  }));
+}
+function dbClear(store) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).clear();
+    req.onsuccess = () => { resolve(); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  }));
+}
+
+// ============================================================
+//  STATE & HELPERS
+// ============================================================
+let currentUser = null;
+let cameraStream = null;
+let capturedPhoto = null;
+let isRecording = false;
+let recognition = null;
+let voiceText = '';
+let currentFacingMode = 'environment';
+let useCustomProduct = false;
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+function today() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysUntil(dateStr) {
+  const todayMs = new Date(today()).getTime();
+  const d = new Date(dateStr).getTime();
+  return Math.floor((d - todayMs) / 86400000);
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  const h = d.getHours().toString().padStart(2,'0');
+  const m = d.getMinutes().toString().padStart(2,'0');
+  return `${d.getMonth()+1}月${d.getDate()}日 ${h}:${m}`;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getFullYear()}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')}`;
+}
+
+function toast(msg, duration=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navMap = { dashboard:0, inventory:1, add:2, products:3, settings:4 };
+  const idx = navMap[name];
+  if (idx !== undefined) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'inventory') renderInventory();
+  if (name === 'products') renderProducts();
+  if (name === 'family') renderFamily();
+  if (name === 'add') initCamera();
+  if (name !== 'add') stopCamera();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ============================================================
+//  DEFAULT DATA
+// ============================================================
+const DEFAULT_PRODUCTS = [
+  { id:'p1', name:'牛奶', category:'乳制品', emoji:'🥛', unit:'盒', shared:true },
+  { id:'p2', name:'鸡蛋', category:'蛋类', emoji:'🥚', unit:'个', shared:true },
+  { id:'p3', name:'猪肉', category:'肉类', emoji:'🥩', unit:'份', shared:true },
+  { id:'p4', name:'鸡肉', category:'肉类', emoji:'🍗', unit:'份', shared:true },
+  { id:'p5', name:'牛肉', category:'肉类', emoji:'🥩', unit:'份', shared:true },
+  { id:'p6', name:'虾', category:'海鲜', emoji:'🦐', unit:'份', shared:true },
+  { id:'p7', name:'鱼', category:'海鲜', emoji:'🐟', unit:'条', shared:true },
+  { id:'p8', name:'白菜', category:'蔬菜', emoji:'🥬', unit:'颗', shared:true },
+  { id:'p9', name:'西红柿', category:'蔬菜', emoji:'🍅', unit:'个', shared:true },
+  { id:'p10', name:'黄瓜', category:'蔬菜', emoji:'🥒', unit:'根', shared:true },
+  { id:'p11', name:'胡萝卜', category:'蔬菜', emoji:'🥕', unit:'根', shared:true },
+  { id:'p12', name:'苹果', category:'水果', emoji:'🍎', unit:'个', shared:true },
+  { id:'p13', name:'香蕉', category:'水果', emoji:'🍌', unit:'根', shared:true },
+  { id:'p14', name:'橙子', category:'水果', emoji:'🍊', unit:'个', shared:true },
+  { id:'p15', name:'矿泉水', category:'饮品', emoji:'💧', unit:'瓶', shared:true },
+  { id:'p16', name:'可乐', category:'饮品', emoji:'🥤', unit:'罐', shared:true },
+  { id:'p17', name:'啤酒', category:'饮品', emoji:'🍺', unit:'罐', shared:true },
+  { id:'p18', name:'酱油', category:'调味品', emoji:'🧂', unit:'瓶', shared:true },
+  { id:'p19', name:'饺子', category:'冷冻食品', emoji:'🥟', unit:'份', shared:true },
+  { id:'p20', name:'冰淇淋', category:'冷冻食品', emoji:'🍦', unit:'盒', shared:true },
+  { id:'p21', name:'豆腐', category:'其他', emoji:'🫘', unit:'块', shared:true },
+  { id:'p22', name:'面包', category:'其他', emoji:'🍞', unit:'袋', shared:true },
+  { id:'p23', name:'大米', category:'干货', emoji:'🍚', unit:'kg', shared:true },
+  { id:'p24', name:'面条', category:'干货', emoji:'🍜', unit:'把', shared:true },
+  { id:'p25', name:'食用油', category:'调味品', emoji:'🫒', unit:'瓶', shared:true },
+];
+
+const CATEGORIES = ['乳制品','蛋类','肉类','海鲜','蔬菜','水果','饮品','调味品','冷冻食品','干货','其他'];
+
+const CATEGORY_EMOJI = {
+  '乳制品':'🥛','蛋类':'🥚','肉类':'🥩','海鲜':'🦐','蔬菜':'🥬',
+  '水果':'🍎','饮品':'🧃','调味品':'🧂','冷冻食品':'🧊','干货':'🌰','其他':'📦'
+};
+
+// ============================================================
+//  AUTH — LOGIN / REGISTER
+// ============================================================
+function hashPass(pw) {
+  let h = 0;
+  for (let i = 0; i < pw.length; i++) {
+    h = ((h << 5) - h) + pw.charCodeAt(i);
+    h = h & h; // Convert to 32bit int
+  }
+  return 'h' + Math.abs(h).toString(36);
+}
+
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('register-error').textContent = '';
+}
+
+function pickAvatar(el) {
+  document.querySelectorAll('#register-form [onclick="pickAvatar(this)"]').forEach(s => s.style.background = 'none');
+  el.style.background = 'var(--primary-bg)';
+  document.getElementById('register-avatar').value = el.textContent;
+}
+
+// Enter key support for forms
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('login-password').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('register-password2').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doRegister();
+  });
+  document.getElementById('login-name').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('login-password').focus();
+  });
+  document.getElementById('register-name').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('register-password').focus();
+  });
+  document.getElementById('register-password').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('register-password2').focus();
+  });
+});
+
+async function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+
+  if (!name || !password) { errEl.textContent = '请输入名称和密码'; return; }
+  errEl.textContent = '';
+
+  const members = await dbAll('members');
+  const found = members.find(m => m.name === name);
+  if (!found) { errEl.textContent = '用户不存在，请先注册'; return; }
+
+  const hashed = hashPass(password);
+  if (found.password !== hashed) { errEl.textContent = '密码错误'; return; }
+
+  currentUser = found;
+  sessionStorage.setItem('fridge_user_id', found.id);
+  enterApp();
+}
+
+async function doRegister() {
+  const name = document.getElementById('register-name').value.trim();
+  const avatar = document.getElementById('register-avatar').value || '😊';
+  const password = document.getElementById('register-password').value;
+  const password2 = document.getElementById('register-password2').value;
+  const errEl = document.getElementById('register-error');
+
+  if (!name) { errEl.textContent = '请输入称呼'; return; }
+  if (name.length > 20) { errEl.textContent = '名称不超过20字'; return; }
+  if (!password || password.length < 4) { errEl.textContent = '密码至少4位'; return; }
+  if (password !== password2) { errEl.textContent = '两次密码不一致'; return; }
+  errEl.textContent = '';
+
+  // Check duplicates
+  const members = await dbAll('members');
+  if (members.some(m => m.name === name)) {
+    errEl.textContent = '该名称已被使用，请换一个';
+    return;
+  }
+
+  // Create user
+  const hashed = hashPass(password);
+  const isFirst = members.length === 0;
+  const newUser = {
+    id: uid(),
+    name: name,
+    avatar: avatar,
+    password: hashed,
+    role: isFirst ? 'owner' : 'member',
+    createdAt: Date.now()
+  };
+  await dbPut('members', newUser);
+  currentUser = newUser;
+  sessionStorage.setItem('fridge_user_id', newUser.id);
+
+  // First user: seed default products
+  if (isFirst) {
+    for (const p of DEFAULT_PRODUCTS) {
+      await dbPut('products', { ...p, createdBy: newUser.id, shared: true });
+    }
+    let settings = await dbGet('settings', 'app');
+    if (!settings) {
+      await dbPut('settings', { key: 'app', familyName: newUser.name + '的家', reminderDays: 3 });
+    }
+  }
+
+  toast('🎉 注册成功！欢迎 ' + name);
+  enterApp();
+}
+
+function enterApp() {
+  document.getElementById('login-screen').classList.remove('show');
+  document.getElementById('login-screen').style.display = 'none';
+  // Show current user in header
+  const header = document.querySelector('.app-header h1');
+  header.innerHTML = `<span>🧊</span> 冰箱管家 <span style="font-size:13px;font-weight:400;color:var(--text-secondary);margin-left:4px">${currentUser.avatar} ${currentUser.name}</span>`;
+
+  initApp();
+  loadSettings();
+  populateProductSelect();
+  document.getElementById('input-expiry').value = addDays(today(), 7);
+}
+
+// ============================================================
+//  INIT (after login)
+// ============================================================
+async function initApp() {
+  let products = await dbAll('products');
+  if (products.length === 0) {
+    for (const p of DEFAULT_PRODUCTS) {
+      await dbPut('products', { ...p, createdBy: currentUser.id, shared: true });
+    }
+  }
+  let settings = await dbGet('settings', 'app');
+  if (!settings) {
+    await dbPut('settings', { key: 'app', familyName: currentUser.name + '的家', reminderDays: 3 });
+  }
+  await renderDashboard();
+  await renderFamily();
+}
+
+// ============================================================
+//  FAMILY (Members)
+// ============================================================
+async function renderFamily() {
+  try {
+    const members = await apiGet('/api/members');
+    const list = document.getElementById('member-list');
+    list.innerHTML = members.map(m => `
+      <li class="member-li">
+        <div class="member-avatar" style="background:${m.role==='owner'?'#FFF3E0':'var(--primary-bg)'}">${m.avatar||'😊'}</div>
+        <div class="member-info">
+          <div class="member-name">${m.name}</div>
+          <div class="member-role ${m.role}">${m.role === 'owner' ? '👑 管理员' : '👤 成员'}</div>
+        </div>
+        ${m.role !== 'owner' ? `<button class="item-btn danger" onclick="removeMember('${m.id}')">移除</button>` : ''}
+      </li>
+    `).join('');
+
+    // Show invite code for owner
+    if (currentUser.role === 'owner') {
+      try {
+        const inv = await apiGet('/api/family/invite');
+        list.innerHTML += `<li class="member-li" style="justify-content:center;padding:14px">
+          <div style="text-align:center">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">📨 邀请码（分享给家人注册）</div>
+            <div style="font-size:22px;font-weight:700;color:var(--primary);letter-spacing:4px;font-family:monospace">${inv.code}</div>
+          </div>
+        </li>`;
+      } catch(e) {}
+    }
+  } catch(e) {
+    toast('加载家庭成员失败');
+  }
+}
+
+async function removeMember(id) {
+  if (!confirm('确定移除该成员？')) return;
+  try {
+    await apiDel('/api/members/' + id);
+    toast('已移除');
+    await renderFamily();
+  } catch(e) { toast(e.message); }
+}
+
+// ============================================================
+//  PRODUCTS (Product Library)
+// ============================================================
+async function renderProducts() {
+  try {
+    const products = await apiGet('/api/products');
+    const search = (document.getElementById('prod-search').value || '').toLowerCase();
+    const filtered = search ? products.filter(p => p.name && p.name.includes(search)) : products;
+
+    const list = document.getElementById('product-list');
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state"><p>暂无产品，点击上方添加</p></div>';
+      return;
+    }
+    const grouped = {};
+    for (const p of filtered) {
+      const cat = p.category || '其他';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(p);
+    }
+    let h = '';
+    for (const cat of CATEGORIES) {
+      if (!grouped[cat]) continue;
+      h += `<div class="card"><div class="card-title">${CATEGORY_EMOJI[cat]||'📦'} ${cat} <span style="font-size:12px;color:var(--text-muted)">${grouped[cat].length}项</span></div><ul class="item-list">`;
+      for (const p of grouped[cat]) {
+        h += `<li class="item-li"><div class="item-emoji">${p.emoji||'📦'}</div><div class="item-info"><div class="item-name">${p.name}</div><div class="item-meta">单位：${p.unit||'个'} 👨‍👩‍👧‍👧共享</div></div><button class="item-btn danger" onclick="deleteProduct('${p.id}')">删除</button></li>`;
+      }
+      h += '</ul></div>';
+    }
+    list.innerHTML = h;
+  } catch(e) { toast('加载产品失败'); }
+}
+
+function showProductModal() {
+  document.getElementById('modal-prod-name').value = '';
+  document.getElementById('modal-prod-category').value = '乳制品';
+  document.getElementById('modal-prod-emoji').value = '';
+  document.getElementById('modal-prod-unit').value = '个';
+  document.getElementById('modal-product').classList.add('show');
+}
+
+async function saveProduct() {
+  const name = document.getElementById('modal-prod-name').value.trim();
+  const category = document.getElementById('modal-prod-category').value;
+  const emoji = document.getElementById('modal-prod-emoji').value.trim() || '📦';
+  const unit = document.getElementById('modal-prod-unit').value.trim() || '个';
+  if (!name) { toast('请输入产品名称'); return; }
+  try {
+    await apiPost('/api/products', { name, category, emoji, unit });
+    closeModal('modal-product');
+    toast(`已添加产品：${name}`);
+    await renderProducts();
+    await populateProductSelect();
+  } catch(e) { toast(e.message); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('确定删除该产品？')) return;
+  try {
+    await apiDel('/api/products/' + id);
+    toast('已删除');
+    await renderProducts();
+    await populateProductSelect();
+  } catch(e) { toast(e.message); }
+}
+
+// ============================================================
+//  POPULATE PRODUCT SELECT
+// ============================================================
+async function populateProductSelect() {
+  try {
+    const products = await apiGet('/api/products');
+    const sel = document.getElementById('input-product');
+    const val = sel.value;
+    sel.innerHTML = '<option value="">-- 选择或输入 --</option><option value="__custom__">✏️ 自定义输入...</option>' +
+      products.map(p => `<option value="${p.id}" data-emoji="${p.emoji||'📦'}" data-unit="${p.unit||'个'}">${p.emoji||'📦'} ${p.name}</option>`).join('');
+    sel.value = val || '';
+  } catch(e) {}
+}
+
+function onProductSelect() {
+  const sel = document.getElementById('input-product');
+  const customGroup = document.getElementById('custom-name-group');
+  if (sel.value === '__custom__') {
+    customGroup.style.display = 'block';
+    useCustomProduct = true;
+    document.getElementById('input-custom-name').value = '';
+    document.getElementById('input-custom-name').focus();
+  } else if (sel.value) {
+    customGroup.style.display = 'none';
+    useCustomProduct = false;
+    const opt = sel.options[sel.selectedIndex];
+    const unit = opt.dataset.unit || '个';
+    document.getElementById('input-unit-display').textContent = unit;
+  } else {
+    customGroup.style.display = 'none';
+    useCustomProduct = false;
+  }
+}
+
+function onCustomName() {
+  useCustomProduct = true;
+}
+
+const LOCATION_LABELS = {
+  'door-1': '🚪冰箱门1', 'door-2': '🚪冰箱门2', 'door-3': '🚪冰箱门3',
+  'door-4': '🚪冰箱门4', 'door-5': '🚪冰箱门5',
+  'pantry': '🗄️储藏室', 'kitchen': '🍳厨房'
+};
+
+function getLocationOptions() {
+  const settings = document.getElementById('input-door-count');
+  const count = parseInt(settings?.value) || 2;
+  const options = [];
+  for (let i = 1; i <= count; i++) {
+    options.push({ value: 'door-' + i, label: '🚪冰箱门' + i });
+  }
+  options.push({ value: 'pantry', label: '🗄️储藏室' });
+  options.push({ value: 'kitchen', label: '🍳厨房' });
+  return options;
+}
+
+function populateLocationSelect() {
+  const sel = document.getElementById('input-location');
+  if (!sel) return;
+  const val = sel.value;
+  const opts = getLocationOptions();
+  sel.innerHTML = opts.map(o => '<option value="' + o.value + '">' + o.label + '</option>').join('');
+  sel.value = val || 'door-1';
+}
+
+function onLocationChange() {}
+
+function getLocationLabel(value) {
+  return LOCATION_LABELS[value] || value || '📦未知';
+}
+
+function changeQty(delta) {
+  const input = document.getElementById('input-qty');
+  let v = parseFloat(input.value) || 1;
+  v = Math.max(0.1, v + delta);
+  input.value = v;
+}
+
+// ============================================================
+//  CAMERA
+// ============================================================
+async function initCamera() {
+  const video = document.getElementById('camera-video');
+  const preview = document.getElementById('camera-preview');
+  const retakeBtn = document.getElementById('btn-retake');
+  const captureBtn = document.getElementById('btn-capture');
+  const switchBtn = document.getElementById('btn-switch-camera');
+
+  if (capturedPhoto) return; // Already have photo
+
+  try {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+    }
+    const constraints = {
+      video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false
+    };
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    preview.style.display = 'none';
+    captureBtn.style.display = 'block';
+    retakeBtn.style.display = 'none';
+    switchBtn.style.display = 'block';
+  } catch (err) {
+    console.error('Camera error:', err);
+    // Camera not available, show upload option
+    document.getElementById('camera-overlay').innerHTML = `
+      <button class="camera-btn" style="background:rgba(255,255,255,0.3);border:2px solid white;font-size:14px;color:white;width:auto;padding:8px 20px;border-radius:20px" onclick="uploadPhoto()">
+        📁 上传照片
+      </button>
+    `;
+    video.style.display = 'none';
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+}
+
+async function switchCamera() {
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  capturedPhoto = null;
+  await initCamera();
+}
+
+function capturePhoto() {
+  const video = document.getElementById('camera-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+
+  video.style.display = 'none';
+  document.getElementById('camera-preview').src = capturedPhoto;
+  document.getElementById('camera-preview').style.display = 'block';
+  document.getElementById('btn-capture').style.display = 'none';
+  document.getElementById('btn-retake').style.display = 'block';
+  document.getElementById('btn-switch-camera').style.display = 'none';
+  stopCamera();
+
+  toast('📸 拍照成功！');
+}
+
+function retakePhoto() {
+  capturedPhoto = null;
+  document.getElementById('camera-preview').style.display = 'none';
+  document.getElementById('btn-capture').style.display = 'block';
+  document.getElementById('btn-retake').style.display = 'none';
+  document.getElementById('btn-switch-camera').style.display = 'block';
+  initCamera();
+}
+
+function uploadPhoto() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      capturedPhoto = ev.target.result;
+      document.getElementById('camera-preview').src = capturedPhoto;
+      document.getElementById('camera-preview').style.display = 'block';
+      document.getElementById('camera-overlay').innerHTML = `
+        <button class="camera-btn" style="background:rgba(255,255,255,0.3);border:2px solid white;font-size:20px;color:white;width:auto;padding:8px 20px;border-radius:20px" onclick="retakePhoto()">
+          ↩️ 重拍
+        </button>
+      `;
+      toast('📸 照片已上传！');
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ============================================================
+//  VOICE INPUT
+// ============================================================
+function toggleVoice() {
+  if (isRecording) {
+    stopVoice();
+    return;
+  }
+  startVoice();
+}
+
+function startVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    toast('您的浏览器不支持语音识别，请使用Chrome浏览器');
+    return;
+  }
+
+  if (!recognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'zh-CN';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.onresult = (e) => {
+      let text = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        text += e.results[i][0].transcript;
+      }
+      voiceText = text;
+      document.getElementById('voice-result').textContent = text || '正在听...';
+    };
+    recognition.onend = () => {
+      isRecording = false;
+      document.getElementById('btn-voice').classList.remove('recording');
+      document.getElementById('btn-voice').textContent = '🎤';
+      if (voiceText) toast('语音识别完成');
+    };
+    recognition.onerror = (e) => {
+      console.error('Voice error:', e.error);
+      isRecording = false;
+      document.getElementById('btn-voice').classList.remove('recording');
+      document.getElementById('btn-voice').textContent = '🎤';
+      if (e.error === 'not-allowed') toast('请允许使用麦克风');
+      else if (e.error === 'no-speech') toast('未检测到语音');
+    };
+  }
+
+  isRecording = true;
+  voiceText = '';
+  document.getElementById('voice-result').textContent = '正在听...🎙️';
+  document.getElementById('btn-voice').classList.add('recording');
+  document.getElementById('btn-voice').textContent = '⏹️';
+  recognition.start();
+}
+
+function stopVoice() {
+  if (recognition) {
+    recognition.stop();
+  }
+  isRecording = false;
+  document.getElementById('btn-voice').classList.remove('recording');
+  document.getElementById('btn-voice').textContent = '🎤';
+}
+
+// ============================================================
+//  SAVE ITEM
+// ============================================================
+async function saveItem() {
+  // Get product
+  let productName = '';
+  let productEmoji = '📦';
+  let productUnit = '个';
+  let productId = '';
+
+  const sel = document.getElementById('input-product');
+  if (useCustomProduct || sel.value === '__custom__') {
+    productName = document.getElementById('input-custom-name').value.trim();
+    if (!productName) { toast('请输入物品名称'); return; }
+  } else if (sel.value) {
+    const opt = sel.options[sel.selectedIndex];
+    productName = opt.text.replace(/^[^\s]+\s/, ''); // Remove emoji prefix
+    productEmoji = opt.dataset.emoji || '📦';
+    productUnit = opt.dataset.unit || '个';
+    productId = sel.value;
+  } else {
+    toast('请选择或输入物品名称');
+    return;
+  }
+
+  const qty = parseFloat(document.getElementById('input-qty').value) || 1;
+  const expiry = document.getElementById('input-expiry').value || addDays(today(), 7);
+  const notes = document.getElementById('input-notes').value.trim() || '';
+
+  // Create inventory item
+  const location = document.getElementById('input-location').value || 'door-1';
+  const item = {
+    id: uid(),
+    productId: productId,
+    productName: productName,
+    emoji: productEmoji,
+    quantity: qty,
+    unit: productUnit,
+    expiryDate: expiry,
+    location: location,
+    addedBy: currentUser.id,
+    addedByName: currentUser.name,
+    addedAt: Date.now(),
+    photo: capturedPhoto || '',
+    voiceNote: voiceText || '',
+    notes: notes || '',
+    status: daysUntil(expiry) < 0 ? 'expired' : 'active'
+  };
+
+  await dbPut('inventory', item);
+
+  // Create activity log
+  const activity = {
+    id: uid(),
+    timestamp: Date.now(),
+    userId: currentUser.id,
+    userName: currentUser.name,
+    action: 'add',
+    productName: productName,
+    emoji: productEmoji,
+    quantity: qty,
+    unit: productUnit,
+    itemId: item.id
+  };
+  await dbPut('activity', activity);
+
+  // Reset form
+  resetAddForm();
+  toast(`✅ ${productName} × ${qty}${productUnit} 已添加到冰箱！`);
+
+  // Auto-navigate to dashboard after a moment
+  setTimeout(() => showPage('dashboard'), 800);
+}
+
+function resetAddForm() {
+  document.getElementById('input-qty').value = '1';
+  document.getElementById('input-expiry').value = '';
+  document.getElementById('input-notes').value = '';
+  document.getElementById('input-custom-name').value = '';
+  document.getElementById('custom-name-group').style.display = 'none';
+  document.getElementById('input-product').value = '';
+  document.getElementById('input-unit-display').textContent = '个';
+  document.getElementById('voice-result').textContent = '点击麦克风开始录音...';
+  useCustomProduct = false;
+  document.getElementById('input-location').value = 'door-1';
+  capturedPhoto = null;
+  voiceText = '';
+  retakePhoto();
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+async function renderDashboard() {
+  try {
+    const [items, activities] = await Promise.all([
+      apiGet('/api/inventory'),
+      apiGet('/api/activity')
+    ]);
+
+    const todayMs = new Date(today()).getTime();
+    const activeItems = items.filter(i => i.status === 'active');
+    const expiredItems = items.filter(i => {
+      const d = new Date(i.expiry_date + 'T00:00:00').getTime();
+      return d < todayMs || i.status === 'expired';
+    });
+
+    document.getElementById('stat-total').textContent = activeItems.reduce((s, i) => s + (i.quantity || 1), 0);
+    const soonItems = activeItems.filter(i => {
+      const d = new Date(i.expiry_date + 'T00:00:00').getTime();
+      const days = Math.floor((d - todayMs) / 86400000);
+      return days >= 0 && days <= 3;
+    });
+    document.getElementById('stat-soon').textContent = soonItems.length;
+    document.getElementById('stat-expired').textContent = expiredItems.length;
+
+    // Location summary
+    const locSum = document.getElementById('location-summary');
+    const locGroups = {};
+    for (const i of activeItems) {
+      const loc = i.location || 'unknown';
+      if (!locGroups[loc]) locGroups[loc] = 0;
+      locGroups[loc] += i.quantity || 1;
+    }
+    if (Object.keys(locGroups).length === 0) {
+      locSum.innerHTML = '<span style="font-size:13px;color:var(--text-muted)">暂无物品</span>';
+    } else {
+      locSum.innerHTML = Object.entries(locGroups).map(([loc, qty]) =>
+        `<span style="background:var(--primary-bg);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600">${getLocationLabel(loc)} <span style="color:var(--primary)">${qty}</span></span>`
+      ).join('');
+    }
+
+    // Expiring
+    const expiringEl = document.getElementById('expiring-list');
+    if (soonItems.length === 0) {
+      expiringEl.innerHTML = '<div class="empty-state"><p>暂无即将过期的物品 🎉</p></div>';
+    } else {
+      expiringEl.innerHTML = '<ul class="item-list">' + soonItems.map(i => {
+        const d = new Date(i.expiry_date + 'T00:00:00').getTime();
+        const days = Math.floor((d - todayMs) / 86400000);
+        return `<li class="item-li"><div class="item-emoji">${i.emoji||'📦'}</div><div class="item-info"><div class="item-name">${i.product_name}</div><div class="item-meta">${getLocationLabel(i.location)} · ${formatDate(i.expiry_date)} <span class="badge-expiry soon">还剩${days}天</span></div></div><div class="item-qty"><div class="num">${i.quantity}</div><div class="unit">${i.unit}</div></div></li>`;
+      }).join('') + '</ul>';
+    }
+
+    // Activity
+    const activityEl = document.getElementById('recent-activity');
+    if (activities.length === 0) {
+      activityEl.innerHTML = '<div class="empty-state"><p>暂无记录</p></div>';
+    } else {
+      activityEl.innerHTML = '<div class="timeline">' + activities.slice(0, 10).map(a => `
+        <div class="timeline-item ${a.action}">
+          <div class="timeline-dot"></div>
+          <div class="timeline-text">
+            ${a.action === 'add' ? '📦' : a.action === 'consume' ? '🍽️' : '🗑️'}
+            <strong>${a.user_name}</strong>
+            ${a.action === 'add' ? '添加了' : a.action === 'consume' ? '消费了' : '移除了'}
+            ${a.emoji||'📦'} ${a.product_name} × ${a.quantity}${a.unit}
+          </div>
+          <div class="timeline-meta">${formatTime(a.timestamp)}</div>
+        </div>
+      `).join('') + '</div>';
+    }
+  } catch(e) {
+    console.error('Dashboard error:', e);
+  }
+}
+
+// ============================================================
+//  INVENTORY
+// ============================================================
+async function renderInventory() {
+  const items = await dbAll('inventory');
+  const search = (document.getElementById('inv-search').value || '').toLowerCase();
+
+  // Sort: expiring soon first
+  items.sort((a, b) => {
+    const aDays = a.expiryDate ? daysUntil(a.expiryDate) : 999;
+    const bDays = b.expiryDate ? daysUntil(b.expiryDate) : 999;
+    if (aDays < 0 && bDays >= 0) return -1;
+    if (bDays < 0 && aDays >= 0) return 1;
+    return aDays - bDays;
+  });
+
+  // Location filter tabs
+  const locOpts = getLocationOptions();
+  const catEl = document.getElementById('category-tabs');
+  catEl.innerHTML = '<button class="category-tab active" onclick="filterInventory(this,\'all\')">全部</button>' +
+    '<button class="category-tab" onclick="filterInventory(this,\'fridge\')">🧊 冰箱</button>' +
+    '<button class="category-tab" onclick="filterInventory(this,\'pantry\')">🗄️ 储藏室</button>' +
+    '<button class="category-tab" onclick="filterInventory(this,\'kitchen\')">🍳 厨房</button>';
+
+  currentFilter = 'all';
+  currentCategoryFilter = '';
+  let filtered = items.filter(i => i.status === 'active' || i.status === undefined || i.status === 'expired')
+    .filter(i => !search || i.productName.includes(search));
+
+  renderInventoryList(filtered);
+}
+
+let currentFilter = 'all';
+let currentCategoryFilter = '';
+
+function filterInventory(el, filter) {
+  document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = filter;
+  currentCategoryFilter = '';
+  applyFilters();
+}
+
+function filterCategory(el, category) {
+  document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = 'all';
+  currentCategoryFilter = category;
+  applyFilters();
+}
+
+async function applyFilters() {
+  const items = await dbAll('inventory');
+  const search = (document.getElementById('inv-search').value || '').toLowerCase();
+  let filtered = items.filter(i => i.status === 'active' || i.status === undefined)
+    .filter(i => !search || i.productName.includes(search));
+
+  // Location filter
+  if (currentFilter === 'fridge') {
+    filtered = filtered.filter(i => i.location && i.location.startsWith('door-'));
+  } else if (currentFilter === 'pantry') {
+    filtered = filtered.filter(i => i.location === 'pantry');
+  } else if (currentFilter === 'kitchen') {
+    filtered = filtered.filter(i => i.location === 'kitchen');
+  }
+
+  // Category filter
+  if (currentCategoryFilter) {
+    const products = await dbAll('products');
+    const prodIds = products.filter(p => p.category === currentCategoryFilter).map(p => p.id);
+    filtered = filtered.filter(i => prodIds.includes(i.productId) || (currentCategoryFilter === '其他' && !prodIds.includes(i.productId)));
+  }
+
+  renderInventoryList(filtered);
+}
+
+function renderInventoryList(items) {
+  const list = document.getElementById('inventory-list');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🧊</div><h3>冰箱空空如也</h3><p>点击底部"记录"按钮添加物品</p></div>';
+    return;
+  }
+
+  list.innerHTML = items.map(i => {
+    const days = i.expiryDate ? daysUntil(i.expiryDate) : null;
+    let badge = '';
+    if (days !== null) {
+      if (days < 0) badge = '<span class="badge-expiry expired">已过期</span>';
+      else if (days <= 3) badge = `<span class="badge-expiry soon">剩${days}天</span>`;
+      else badge = `<span class="badge-expiry normal">${formatDate(i.expiryDate)}</span>`;
+    }
+
+    const hasPhoto = i.photo && i.photo.length > 100;
+    return `<div class="card" style="margin-bottom:8px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${hasPhoto ? `<div class="item-emoji" style="width:38px;height:38px;font-size:22px;overflow:hidden;cursor:pointer;padding:0" onclick="showPhoto('${i.id}')"><img src="${i.photo}" style="width:100%;height:100%;object-fit:cover" alt="photo"></div>`
+          : `<div class="item-emoji" style="width:38px;height:38px;font-size:22px">${i.emoji||'📦'}</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.productName}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:1px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            <span>${i.addedByName||'未知'}</span>
+            ${badge ? '<span>·</span>' : ''}
+            ${badge}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;color:var(--primary)">${i.quantity}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${i.unit}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <button class="item-btn" onclick="itemAction('consume','${i.id}')" title="消费">🍽️</button>
+          <button class="item-btn danger" onclick="itemAction('remove','${i.id}')" title="删除">🗑️</button>
+        </div>
+      </div>
+      ${hasPhoto ? `<div style="font-size:10px;color:var(--primary);margin-top:4px;cursor:pointer" onclick="showPhoto('${i.id}')">📸 查看照片</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function itemAction(action, itemId) {
+  const item = await dbGet('inventory', itemId);
+  if (!item) { toast('物品不存在'); return; }
+
+  if (action === 'consume') {
+    // Reduce quantity or remove
+    if (item.quantity > 1) {
+      item.quantity -= 1;
+      await dbPut('inventory', item);
+    } else {
+      await dbDelete('inventory', itemId);
+    }
+    await dbPut('activity', {
+      id: uid(), timestamp: Date.now(), userId: currentUser.id, userName: currentUser.name,
+      action: 'consume', productName: item.productName, emoji: item.emoji || '📦',
+      quantity: 1, unit: item.unit, itemId: item.id
+    });
+    toast(`🍽️ 已消耗 ${item.productName}`);
+  } else if (action === 'remove') {
+    if (!confirm(`确定移除 ${item.productName}？`)) return;
+    await dbDelete('inventory', itemId);
+    await dbPut('activity', {
+      id: uid(), timestamp: Date.now(), userId: currentUser.id, userName: currentUser.name,
+      action: 'remove', productName: item.productName, emoji: item.emoji || '📦',
+      quantity: item.quantity, unit: item.unit, itemId: item.id
+    });
+    toast(`已移除 ${item.productName}`);
+  }
+
+  await renderInventory();
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+async function saveSettings() {
+  const familyName = document.getElementById('input-family-name').value.trim() || '我的家庭';
+  const reminderDays = parseInt(document.getElementById('input-reminder-days').value) || 3;
+  const doorCount = parseInt(document.getElementById('input-door-count').value) || 2;
+  try {
+    await apiPost('/api/settings', { key: 'familyName', value: familyName });
+    await apiPost('/api/settings', { key: 'reminderDays', value: String(reminderDays) });
+    await apiPost('/api/settings', { key: 'doorCount', value: String(doorCount) });
+    populateLocationSelect();
+    toast('设置已保存');
+  } catch(e) { toast('保存失败'); }
+}
+
+async function loadSettings() {
+  try {
+    const s = await apiGet('/api/settings');
+    document.getElementById('input-family-name').value = s.familyName || '我的家庭';
+    document.getElementById('input-reminder-days').value = s.reminderDays || 3;
+    document.getElementById('input-door-count').value = s.doorCount || 2;
+  } catch(e) {}
+  populateLocationSelect();
+}
+
+// ============================================================
+//  PHOTO VIEWER
+// ============================================================
+async function showPhoto(itemId) {
+  const item = await dbGet('inventory', itemId);
+  if (!item || !item.photo) { toast('没有照片'); return; }
+  // Create a full-screen overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="position:absolute;top:20px;right:20px;color:white;font-size:28px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:50%" onclick="this.parentElement.remove()">✕</div>
+    <img src="${item.photo}" style="max-width:100%;max-height:80vh;border-radius:12px;object-fit:contain" alt="${item.productName}">
+    <div style="color:white;margin-top:16px;font-size:16px;text-align:center">
+      <div style="font-weight:600">${item.emoji||'📦'} ${item.productName} × ${item.quantity}${item.unit}</div>
+      <div style="font-size:13px;opacity:0.7;margin-top:4px">${item.addedByName||'未知'} · ${formatTime(item.addedAt)}</div>
+      ${item.voiceNote ? `<div style="font-size:13px;opacity:0.7;margin-top:4px">🎤 ${item.voiceNote}</div>` : ''}
+      ${item.notes ? `<div style="font-size:13px;opacity:0.7;margin-top:4px">📝 ${item.notes}</div>` : ''}
+      ${item.location ? `<div style="font-size:13px;opacity:0.7;margin-top:4px">📍 ${getLocationLabel(item.location)}</div>` : ''}
+      ${item.expiryDate ? `<div style="font-size:13px;opacity:0.7;margin-top:4px">⏰ 过期：${formatDate(item.expiryDate)}</div>` : ''}
+    </div>
+  `;
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+}
+
+// ============================================================
+//  START
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = localStorage.getItem('fridge_token');
+  if (token) {
+    // Decode JWT to get user info
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      currentUser = { id: payload.id, name: payload.name, avatar: payload.avatar, role: payload.role, familyId: payload.familyId };
+      enterApp();
+      return;
+    } catch(e) {}
+  }
+  document.getElementById('login-screen').classList.add('show');
+  document.getElementById('login-screen').style.display = '';
+});
+</script>
+</body>
+</html>

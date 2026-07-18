@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Test via localhost HTTPS
+send "curl -sk https://localhost/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"test-ssl\",\"password\":\"test1234\",\"familyName\":\"t\"}' | head -c 300\r"
+expect "#"
+send "echo ''\r"
+expect "#"
+
+# Test via public HTTPS (through Cloudflare)
+send "curl -sv 'https://api.food.sbody.work/api/login' -X POST -H 'Content-Type: application/json' -d '{\"name\":\"test-ssl\",\"password\":\"test1234\"}' 2>&1 | head -30\r"
+expect "#"
+
+send "exit\r"
+expect eof

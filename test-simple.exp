@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+set timeout 60
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "rm -f /root/fridge-api/fridge.db\r"
+expect "#"
+send "pm2 restart fridge-api\r"
+expect "#"
+send "sleep 3\r"
+expect "#"
+
+send "curl -s http://localhost:3002/api/register -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"dad\",\"password\":\"test1234\",\"familyName\":\"family\"}' 2>&1 | head -c 300\r"
+expect "#"
+send "echo ''\r"
+expect "#"
+
+send "curl -s http://localhost:3002/api/login -X POST -H \"Content-Type: application/json\" -d '{\"name\":\"dad\",\"password\":\"test1234\"}' 2>&1 | head -c 300\r"
+expect "#"
+send "echo ''\r"
+expect "#"
+
+send "echo '=== DONE ==='\r"
+expect "#"
+send "exit\r"
+expect eof

@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Test local API
+send "curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"爸爸\",\"password\":\"test1234\",\"familyName\":\"我们的家\"}' 2>&1\r"
+expect "#"
+send "echo '---SEPARATOR---'\r"
+expect "#"
+
+# Test local nginx
+send "curl -s http://localhost/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"妈妈\",\"password\":\"test1234\",\"avatar\":\"👩\",\"familyName\":\"outro\"}' 2>&1 | head -c 300\r"
+expect "#"
+
+send "exit\r"
+expect eof

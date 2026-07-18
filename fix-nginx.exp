@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Fix nginx server_name
+send "sed -i 's/server_name api.food-sbody.work/server_name api.food.sbody.work api.food-sbody.work/' /etc/nginx/sites-available/fridge-api\r"
+expect "#"
+send "nginx -t && nginx -s reload && echo 'nginx OK'\r"
+expect "#"
+
+# Test local API
+send "curl -s http://localhost:3002/api/health 2>/dev/null || curl -s http://localhost:3002/api/login -X POST -H 'Content-Type: application/json' -d '{\"name\":\"x\",\"password\":\"x\"}' | head -c 100\r"
+expect "#"
+
+# Set up PM2 to auto-start on reboot
+send "pm2 startup systemd -u root --hp /root 2>&1 | tail -3\r"
+expect "#"
+send "pm2 save\r"
+expect "#"
+
+send "exit\r"
+expect eof

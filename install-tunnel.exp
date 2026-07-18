@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+set timeout 120
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Install cloudflared
+send "which cloudflared 2>/dev/null && echo 'ALREADY_INSTALLED' || (curl -sL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && chmod +x /usr/local/bin/cloudflared && echo 'INSTALLED')\r"
+expect "#"
+
+# Login
+send "cloudflared tunnel login 2>&1 | head -10\r"
+expect "#"
+
+send "exit\r"
+expect eof

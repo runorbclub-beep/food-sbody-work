@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+set timeout 300
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+send "cd /root/fridge-api && npm install express cors jsonwebtoken bcryptjs 2>&1 | tail -10\r"
+expect "#"
+send "echo '--- BASIC DEPS DONE ---'\r"
+expect "#"
+
+# try better-sqlite3, fall back to sql.js
+send "cd /root/fridge-api && npm install better-sqlite3 2>&1 | tail -5\r"
+expect "#"
+
+# Check if it compiled
+send "node -e \"try{require('better-sqlite3');console.log('SQLITE3_OK')}catch(e){console.log('SQLITE3_FAIL')}\" 2>&1\r"
+expect "#"
+
+send "exit\r"
+expect eof

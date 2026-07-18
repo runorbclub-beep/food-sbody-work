@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Open port 3002 for Cloudflare Worker access
+send "ufw allow 3002/tcp && echo 'Port 3002 opened'\r"
+expect "#"
+send "ufw status | grep 3002\r"
+expect "#"
+
+# Test from outside
+send "curl -s http://localhost:3002/api/health 2>/dev/null || curl -s http://localhost:3002/api/register -X POST -H 'Content-Type: application/json' -d '{\"name\":\"x\",\"password\":\"test1234\"}' | head -c 100\r"
+expect "#"
+
+send "exit\r"
+expect eof

@@ -1,0 +1,24 @@
+#!/usr/bin/expect -f
+set timeout 30
+set server "129.212.236.200"
+set password "ZH@19880401n"
+
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Check what IPs nginx is listening on for 443
+send "ss -tlnp | grep -E '443|3002'\r"
+expect "#"
+
+# Test the nginx SSL locally with correct Host header
+send "curl -sI 'https://localhost/api/register' -H 'Host: api.food.sbody.work' --resolve api.food.sbody.work:443:127.0.0.1 2>&1 | head -10\r"
+expect "#"
+
+# Check if the nginx actual config
+send "nginx -T 2>&1 | grep -A5 'server_name api.food.sbody.work' | head -20\r"
+expect "#"
+
+send "exit\r"
+expect eof

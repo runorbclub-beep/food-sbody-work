@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+set timeout 120
+set server "129.212.236.200"
+set password "ZH@19880401n"
+set src_dir "/Users/xiaoningli/项目/fridge-app"
+
+# SCP the server files
+spawn scp -o StrictHostKeyChecking=no $src_dir/server.js $src_dir/package.json root@$server:/root/fridge-api/
+expect "password:"
+send "$password\r"
+expect eof
+sleep 1
+
+# SSH and set up
+spawn ssh -o StrictHostKeyChecking=no root@$server
+expect "password:"
+send "$password\r"
+expect "#"
+
+# Create directory, install deps, start
+send "mkdir -p /root/fridge-api\r"
+expect "#"
+send "cd /root/fridge-api\r"
+expect "#"
+send "npm init -y 2>/dev/null && npm install express better-sqlite3 jsonwebtoken bcryptjs cors 2>&1 | tail -5\r"
+expect "#"
+send "echo 'Dependencies installed'\r"
+expect "#"
+
+# Check if PM2 is installed
+send "which pm2 2>/dev/null || npm install -g pm2 2>&1 | tail -3\r"
+expect "#"
+
+# Stop existing process if any
+send "pm2 stop fridge-api 2>/dev/null; pm2 delete fridge-api 2>/dev/null; echo 'cleaned'\r"
+expect "#"
+
+# Start with PM2
+send "cd /root/fridge-api && pm2 start server.js --name fridge-api -- 2>&1\r"
+expect "#"
+send "pm2 save\r"
+expect "#"
+sleep 2
+
+# Test
+send "curl -s http://localhost:3002/api/login -X POST -H 'Content-Type: application/json' -d '{\"name\":\"test\",\"password\":\"test1234\"}' | head -c 200\r"
+expect "#"
+
+# Check if nginx is available
+send "which nginx && nginx -t 2>&1 | head -3\r"
+expect "#"
+
+send "exit\r"
+expect eof
