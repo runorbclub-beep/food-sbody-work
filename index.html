@@ -1692,74 +1692,65 @@ function stopVoice() {
 //  SAVE ITEM
 // ============================================================
 async function saveItem() {
-  // Get product
   let productName = '';
   let productEmoji = '📦';
   let productUnit = '个';
-  let productId = '';
+  let productIdVal = '';
 
-  const sel = document.getElementById('input-product');
-  if (useCustomProduct || sel.value === '__custom__') {
-    productName = document.getElementById('input-custom-name').value.trim();
-    if (!productName) { toast('请输入物品名称'); return; }
-  } else if (sel.value) {
-    const opt = sel.options[sel.selectedIndex];
-    productName = opt.text.replace(/^[^\s]+\s/, ''); // Remove emoji prefix
-    productEmoji = opt.dataset.emoji || '📦';
-    productUnit = opt.dataset.unit || '个';
-    productId = sel.value;
+  // Voice input takes priority
+  if (voiceText && voiceText.trim()) {
+    productName = voiceText.trim();
   } else {
-    toast('请选择或输入物品名称');
-    return;
+    // Manual input
+    const customName = document.getElementById('input-custom-name').value.trim();
+    const sel = document.getElementById('input-product');
+    if (customName) {
+      productName = customName;
+      const opts = sel.options;
+      for (let i = 0; i < opts.length; i++) {
+        if (opts[i].value && opts[i].text.includes(customName)) {
+          productEmoji = opts[i].dataset.emoji || '📦';
+          productUnit = opts[i].dataset.unit || '个';
+          productIdVal = opts[i].value;
+          break;
+        }
+      }
+    } else if (sel.value) {
+      const opt = sel.options[sel.selectedIndex];
+      productName = opt.text.replace(/^[^\s]+\s/, '');
+      productEmoji = opt.dataset.emoji || '📦';
+      productUnit = opt.dataset.unit || '个';
+      productIdVal = sel.value;
+    }
   }
+
+  if (!productName) { toast('请输入物品名称'); return; }
 
   const qty = parseFloat(document.getElementById('input-qty').value) || 1;
   const expiry = document.getElementById('input-expiry').value || addDays(today(), 7);
   const notes = document.getElementById('input-notes').value.trim() || '';
-
-  // Create inventory item
   const location = document.getElementById('input-location').value || 'door-1';
-  const item = {
-    id: uid(),
-    productId: productId,
-    productName: productName,
-    emoji: productEmoji,
-    quantity: qty,
-    unit: productUnit,
-    expiryDate: expiry,
-    location: location,
-    addedBy: currentUser.id,
-    addedByName: currentUser.name,
-    addedAt: Date.now(),
-    photo: capturedPhoto || '',
-    voiceNote: voiceText || '',
-    notes: notes || '',
-    status: daysUntil(expiry) < 0 ? 'expired' : 'active'
-  };
 
-  await dbPut('inventory', item);
+  try {
+    await apiPost('/api/inventory', {
+      productId: productIdVal,
+      productName: productName,
+      emoji: productEmoji,
+      quantity: qty,
+      unit: productUnit,
+      expiryDate: expiry,
+      location: location,
+      photo: capturedPhoto || '',
+      voiceNote: voiceText || '',
+      notes: notes || ''
+    });
 
-  // Create activity log
-  const activity = {
-    id: uid(),
-    timestamp: Date.now(),
-    userId: currentUser.id,
-    userName: currentUser.name,
-    action: 'add',
-    productName: productName,
-    emoji: productEmoji,
-    quantity: qty,
-    unit: productUnit,
-    itemId: item.id
-  };
-  await dbPut('activity', activity);
-
-  // Reset form
-  resetAddForm();
-  toast(`✅ ${productName} × ${qty}${productUnit} 已添加到冰箱！`);
-
-  // Auto-navigate to dashboard after a moment
-  setTimeout(() => showPage('dashboard'), 800);
+    resetAddForm();
+    toast('✅ ' + productName + ' x' + qty + productUnit + ' 已保存！');
+    setTimeout(() => showPage('dashboard'), 800);
+  } catch (e) {
+    toast('保存失败: ' + e.message);
+  }
 }
 
 function resetAddForm() {
